@@ -36,9 +36,15 @@ futures = "0.3"
 tokio-util = "0.7"
 toml = "0.8"
 humantime-serde = "1.1"
+# OCR
+leptess = { version = "0.14", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
+
+[features]
+default = []
+ocr = ["leptess"]
 
 [profile.release]
 lto = true
