@@ -27,11 +27,12 @@ pub struct MetricWeights {
 impl Default for MetricWeights {
     fn default() -> Self {
         Self {
-            pixel: 1.0,
-            layout: 1.0,
-            typography: 1.0,
-            color: 1.0,
-            content: 1.0,
+            // Match ScoreWeights::default() from metrics to keep existing weighting behavior.
+            pixel: 0.35,
+            layout: 0.25,
+            typography: 0.15,
+            color: 0.15,
+            content: 0.10,
         }
     }
 }
@@ -43,6 +44,8 @@ pub struct Timeouts {
     pub navigation: Duration,
     #[serde(with = "humantime_serde")]
     pub network_idle: Duration,
+    #[serde(with = "humantime_serde")]
+    pub process: Duration,
 }
 
 impl Default for Timeouts {
@@ -50,6 +53,7 @@ impl Default for Timeouts {
         Self {
             navigation: Duration::from_secs(30),
             network_idle: Duration::from_secs(10),
+            process: Duration::from_secs(45),
         }
     }
 }
@@ -119,6 +123,11 @@ impl Config {
             } else {
                 self.timeouts.network_idle
             },
+            process: if self.timeouts.process == Duration::from_secs(0) {
+                defaults.timeouts.process
+            } else {
+                self.timeouts.process
+            },
         };
     }
 
@@ -137,7 +146,10 @@ impl Config {
         if weights.iter().any(|w| *w <= 0.0) {
             return Err("all metric weights must be positive".to_string());
         }
-        if self.timeouts.navigation.is_zero() || self.timeouts.network_idle.is_zero() {
+        if self.timeouts.navigation.is_zero()
+            || self.timeouts.network_idle.is_zero()
+            || self.timeouts.process.is_zero()
+        {
             return Err("timeouts must be greater than zero seconds".to_string());
         }
         Ok(())
@@ -157,10 +169,11 @@ mod tests {
         assert_eq!(cfg.viewport.width, 1440);
         assert_eq!(cfg.viewport.height, 900);
         assert!((cfg.threshold - 0.95).abs() < f64::EPSILON);
-        assert!((cfg.metric_weights.pixel - 1.0).abs() < f32::EPSILON);
-        assert!((cfg.metric_weights.layout - 1.0).abs() < f32::EPSILON);
+        assert!((cfg.metric_weights.pixel - 0.35).abs() < f32::EPSILON);
+        assert!((cfg.metric_weights.layout - 0.25).abs() < f32::EPSILON);
         assert_eq!(cfg.timeouts.navigation, Duration::from_secs(30));
         assert_eq!(cfg.timeouts.network_idle, Duration::from_secs(10));
+        assert_eq!(cfg.timeouts.process, Duration::from_secs(45));
     }
 
     #[test]
@@ -181,6 +194,7 @@ mod tests {
             timeouts: Timeouts {
                 navigation: Duration::from_secs(20),
                 network_idle: Duration::from_secs(5),
+                process: Duration::from_secs(60),
             },
         };
 
@@ -191,6 +205,7 @@ mod tests {
         assert!((cfg.metric_weights.layout - 1.2).abs() < f32::EPSILON);
         assert_eq!(cfg.timeouts.navigation, Duration::from_secs(20));
         assert_eq!(cfg.timeouts.network_idle, Duration::from_secs(5));
+        assert_eq!(cfg.timeouts.process, Duration::from_secs(60));
     }
 
     #[test]
@@ -221,6 +236,7 @@ layout = 0.0 # should default
 [timeouts]
 navigation = "20s"
 network_idle = "5s"
+process = "55s"
 "#,
         )
         .unwrap();
@@ -228,10 +244,11 @@ network_idle = "5s"
         let cfg = Config::from_toml_file(tmp.path()).expect("load config");
         assert!((cfg.threshold - 0.9).abs() < f64::EPSILON);
         assert!((cfg.metric_weights.pixel - 0.8).abs() < f32::EPSILON);
-        assert!((cfg.metric_weights.layout - 1.0).abs() < f32::EPSILON);
+        assert!((cfg.metric_weights.layout - MetricWeights::default().layout).abs() < f32::EPSILON);
         assert_eq!(cfg.viewport.width, 1440);
         assert_eq!(cfg.viewport.height, 900);
         assert_eq!(cfg.timeouts.navigation, Duration::from_secs(20));
         assert_eq!(cfg.timeouts.network_idle, Duration::from_secs(5));
+        assert_eq!(cfg.timeouts.process, Duration::from_secs(55));
     }
 }
