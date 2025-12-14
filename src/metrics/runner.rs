@@ -1,16 +1,18 @@
 use crate::error::DpcError;
 use crate::types::{
     ColorMetric, ContentMetric, LayoutMetric, MetricScores, NormalizedView, PixelMetric,
-    TypographyMetric,
+    TypographyMetric, HierarchyMetric, MetricResult,
 };
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+use thiserror::Error;
 
 use super::{
     ColorPaletteMetric, ContentSimilarity, LayoutSimilarity, PixelSimilarity, TypographySimilarity,
 };
+use super::hierarchy::HierarchyHeuristic;
 
 /// The kind of metric being computed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -21,22 +23,24 @@ pub enum MetricKind {
     Typography,
     Color,
     Content,
+    Hierarchy, // Add Hierarchy metric kind
 }
 
 impl MetricKind {
-    pub const fn all() -> [MetricKind; 5] {
+    pub const fn all() -> [MetricKind; 6] {
         [
             MetricKind::Pixel,
             MetricKind::Layout,
             MetricKind::Typography,
             MetricKind::Color,
             MetricKind::Content,
+            MetricKind::Hierarchy,
         ]
     }
 }
 
 impl fmt::Display for MetricKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&mut self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
@@ -46,22 +50,24 @@ impl fmt::Display for MetricKind {
                 MetricKind::Typography => "typography",
                 MetricKind::Color => "color",
                 MetricKind::Content => "content",
+                MetricKind::Hierarchy => "hierarchy",
             }
         )
     }
 }
 
 impl FromStr for MetricKind {
-    type Err = String;
+    type Err = DpcError;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s.to_ascii_lowercase().as_str() {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
             "pixel" => Ok(MetricKind::Pixel),
             "layout" => Ok(MetricKind::Layout),
             "typography" => Ok(MetricKind::Typography),
             "color" => Ok(MetricKind::Color),
             "content" => Ok(MetricKind::Content),
-            other => Err(format!("unknown metric kind: {}", other)),
+            "hierarchy" => Ok(MetricKind::Hierarchy),
+            _ => Err(DpcError::Config(format!("Unknown metric kind: {}", s))),
         }
     }
 }
@@ -76,46 +82,15 @@ pub trait Metric {
     ) -> Result<MetricResult>;
 }
 
-/// Result of a metric computation, containing the specific metric data.
-#[derive(Debug, Clone)]
-pub enum MetricResult {
-    Pixel(PixelMetric),
-    Layout(LayoutMetric),
-    Typography(TypographyMetric),
-    Color(ColorMetric),
-    Content(ContentMetric),
-}
-
-impl MetricResult {
-    pub fn kind(&self) -> MetricKind {
-        match self {
-            MetricResult::Pixel(_) => MetricKind::Pixel,
-            MetricResult::Layout(_) => MetricKind::Layout,
-            MetricResult::Typography(_) => MetricKind::Typography,
-            MetricResult::Color(_) => MetricKind::Color,
-            MetricResult::Content(_) => MetricKind::Content,
-        }
-    }
-
-    pub fn score(&self) -> f32 {
-        match self {
-            MetricResult::Pixel(m) => m.score,
-            MetricResult::Layout(m) => m.score,
-            MetricResult::Typography(m) => m.score,
-            MetricResult::Color(m) => m.score,
-            MetricResult::Content(m) => m.score,
-        }
-    }
-}
-
 /// Returns the default set of all metrics.
 pub fn default_metrics() -> Vec<Box<dyn Metric>> {
     vec![
-        Box::new(PixelSimilarity::default()),
-        Box::new(LayoutSimilarity::default()),
-        Box::new(TypographySimilarity::default()),
-        Box::new(ColorPaletteMetric::default()),
-        Box::new(ContentSimilarity::default()),
+        Box::<PixelSimilarity>::default(),
+        Box::<LayoutSimilarity>::default(),
+        Box::<TypographySimilarity>::default(),
+        Box::<ColorPaletteMetric>::default(),
+        Box::<ContentSimilarity>::default(),
+        Box::<HierarchyHeuristic>::default(), // Add HierarchyHeuristic
     ]
 }
 
@@ -209,7 +184,7 @@ pub fn run_metrics(
     if !missing.is_empty() {
         let names = missing
             .iter()
-            .map(MetricKind::to_string)
+            .map(|k| k.to_string())
             .collect::<Vec<_>>()
             .join(", ");
         return Err(DpcError::Config(format!(
@@ -218,13 +193,7 @@ pub fn run_metrics(
         )));
     }
 
-    let mut scores = MetricScores {
-        pixel: None,
-        layout: None,
-        typography: None,
-        color: None,
-        content: None,
-    };
+    let mut scores = MetricScores::default();
 
     for metric in metrics {
         let kind = metric.kind();
@@ -249,6 +218,7 @@ pub fn run_metrics(
             MetricResult::Typography(m) => scores.typography = Some(m),
             MetricResult::Color(m) => scores.color = Some(m),
             MetricResult::Content(m) => scores.content = Some(m),
+            MetricResult::Hierarchy(m) => scores.hierarchy = Some(m), // Process HierarchyMetric result
         }
     }
 
