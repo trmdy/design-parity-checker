@@ -33,6 +33,31 @@ fn compare_exit_code_passes_for_matching_images() {
 }
 
 #[test]
+fn compare_accepts_config_flag_and_still_passes() {
+    let dir = TempDir::new().expect("tempdir");
+    let ref_path = dir.path().join("ref.png");
+    let impl_path = dir.path().join("impl.png");
+    let cfg_path = dir.path().join("dpc.toml");
+    write_image(&ref_path, [1, 2, 3, 255]);
+    write_image(&impl_path, [1, 2, 3, 255]);
+    std::fs::write(&cfg_path, "threshold = 0.9\n").expect("write config");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_dpc"))
+        .args([
+            "compare",
+            "--ref",
+            ref_path.to_str().unwrap(),
+            "--impl",
+            impl_path.to_str().unwrap(),
+            "--config",
+            cfg_path.to_str().unwrap(),
+        ])
+        .status()
+        .expect("run dpc");
+    assert_eq!(status.code(), Some(0));
+}
+
+#[test]
 fn compare_exit_code_fails_threshold_for_different_images() {
     let dir = TempDir::new().expect("tempdir");
     let ref_path = dir.path().join("ref.png");
@@ -330,6 +355,53 @@ fn generate_code_stub_exits_zero() {
     match body {
         DpcOutput::GenerateCode(out) => {
             assert_eq!(out.input.value, input_path.to_string_lossy());
+            let summary = out
+                .summary
+                .and_then(|s| s.top_issues.first().cloned())
+                .unwrap_or_default();
+            assert!(
+                summary.to_ascii_lowercase().contains("not implemented"),
+                "expected not-implemented summary, got: {summary}"
+            );
+        }
+        other => panic!("expected generate-code output, got {:?}", other),
+    }
+}
+
+#[test]
+fn generate_code_pretty_outputs_stub_message() {
+    let dir = TempDir::new().expect("tempdir");
+    let input_path = dir.path().join("input.png");
+    write_image(&input_path, [128, 64, 32, 255]);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_dpc"))
+        .args([
+            "generate-code",
+            "--input",
+            input_path.to_str().unwrap(),
+            "--stack",
+            "html+tailwind",
+            "--viewport",
+            "800x600",
+            "--format",
+            "pretty",
+        ])
+        .output()
+        .expect("run dpc generate-code");
+
+    assert_eq!(output.status.code(), Some(0));
+    let body: DpcOutput =
+        serde_json::from_slice(&output.stdout).expect("pretty output should stay JSON when piped");
+    match body {
+        DpcOutput::GenerateCode(out) => {
+            let summary = out
+                .summary
+                .and_then(|s| s.top_issues.first().cloned())
+                .unwrap_or_default();
+            assert!(
+                summary.to_ascii_lowercase().contains("not implemented"),
+                "expected not-implemented summary, got: {summary}"
+            );
         }
         other => panic!("expected generate-code output, got {:?}", other),
     }
@@ -362,6 +434,53 @@ fn quality_stub_exits_zero() {
             assert_eq!(out.input.value, input_path.to_string_lossy());
             assert_eq!(out.viewport.width, 640);
             assert_eq!(out.viewport.height, 480);
+            let first = out
+                .findings
+                .get(0)
+                .map(|f| f.message.clone())
+                .unwrap_or_default();
+            assert!(
+                first.to_ascii_lowercase().contains("not implemented"),
+                "expected not-implemented finding, got: {first}"
+            );
+        }
+        other => panic!("expected quality output, got {:?}", other),
+    }
+}
+
+#[test]
+fn quality_pretty_outputs_stub_message() {
+    let dir = TempDir::new().expect("tempdir");
+    let input_path = dir.path().join("input.png");
+    write_image(&input_path, [200, 200, 200, 255]);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_dpc"))
+        .args([
+            "quality",
+            "--input",
+            input_path.to_str().unwrap(),
+            "--viewport",
+            "640x480",
+            "--format",
+            "pretty",
+        ])
+        .output()
+        .expect("run dpc quality");
+
+    assert_eq!(output.status.code(), Some(0));
+    let body: DpcOutput =
+        serde_json::from_slice(&output.stdout).expect("pretty output should stay JSON when piped");
+    match body {
+        DpcOutput::Quality(out) => {
+            let first = out
+                .findings
+                .get(0)
+                .map(|f| f.message.clone())
+                .unwrap_or_default();
+            assert!(
+                first.to_ascii_lowercase().contains("not implemented"),
+                "expected not-implemented finding, got: {first}"
+            );
         }
         other => panic!("expected quality output, got {:?}", other),
     }

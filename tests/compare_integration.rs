@@ -52,6 +52,63 @@ fn parse_error_pretty(stderr: &[u8]) -> serde_json::Value {
 }
 
 #[test]
+fn compare_emits_artifacts_when_keep_artifacts_is_enabled() {
+    let dir = tempdir().expect("tempdir");
+    let ref_path = dir.path().join("ref.png");
+    let impl_path = dir.path().join("impl.png");
+    let artifacts_dir = dir.path().join("artifacts");
+
+    let ref_img: ImageBuffer<Rgba<u8>, _> = ImageBuffer::from_pixel(4, 4, Rgba([10, 20, 30, 255]));
+    let impl_img: ImageBuffer<Rgba<u8>, _> = ImageBuffer::from_pixel(4, 4, Rgba([10, 20, 30, 255]));
+    ref_img.save(&ref_path).unwrap();
+    impl_img.save(&impl_path).unwrap();
+
+    let output = run_compare(
+        &[
+            "compare",
+            "--ref",
+            ref_path.to_str().unwrap(),
+            "--impl",
+            impl_path.to_str().unwrap(),
+            "--format",
+            "json",
+            "--threshold",
+            "0.9",
+            "--keep-artifacts",
+            "--artifacts-dir",
+            artifacts_dir.to_str().unwrap(),
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+
+    match parse_output(&output.stdout) {
+        DpcOutput::Compare(out) => {
+            let artifacts = out
+                .artifacts
+                .expect("artifacts block should be present when --keep-artifacts is set");
+            assert!(
+                artifacts.kept,
+                "kept should be true when keep-artifacts is set"
+            );
+            assert_eq!(
+                artifacts.directory, artifacts_dir,
+                "artifacts directory should echo the requested path"
+            );
+
+            let ref_shot = artifacts.ref_screenshot.expect("ref screenshot path");
+            assert!(ref_shot.exists(), "ref screenshot should exist on disk");
+            let impl_shot = artifacts.impl_screenshot.expect("impl screenshot path");
+            assert!(impl_shot.exists(), "impl screenshot should exist on disk");
+            let diff_heatmap = artifacts.diff_image.expect("diff heatmap path");
+            assert!(diff_heatmap.exists(), "diff heatmap should exist on disk");
+        }
+        other => panic!("expected compare output, got {:?}", other),
+    }
+}
+
+#[test]
 fn ignore_regions_masks_pixel_differences() {
     let dir = tempdir().expect("tempdir");
     let ref_path = dir.path().join("ref.png");

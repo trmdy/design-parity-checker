@@ -55,7 +55,10 @@ fn generate_code_stub_returns_not_implemented() {
             assert!(
                 out.summary
                     .as_ref()
-                    .map_or(false, |s| !s.top_issues.is_empty()),
+                    .and_then(|s| s.top_issues.first())
+                    .map_or(false, |t| t
+                        .to_ascii_lowercase()
+                        .contains("not implemented")),
                 "summary.topIssues should include not-implemented note"
             );
             assert!(
@@ -93,6 +96,13 @@ fn quality_stub_returns_not_implemented() {
             let first = &out.findings[0];
             assert_eq!(first.finding_type, "not_implemented");
             assert!(matches!(first.severity, dpc_lib::FindingSeverity::Info));
+            assert!(
+                first
+                    .message
+                    .to_ascii_lowercase()
+                    .contains("not implemented"),
+                "expected not-implemented message in finding"
+            );
         }
         other => panic!("expected quality output, got {:?}", other),
     }
