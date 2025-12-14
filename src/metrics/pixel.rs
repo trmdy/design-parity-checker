@@ -1,8 +1,6 @@
 use crate::error::DpcError;
 use crate::image_loader::resize_to_match;
-use crate::types::{
-    DiffSeverity, NormalizedView, PixelDiffReason, PixelDiffRegion, PixelMetric,
-};
+use crate::types::{DiffSeverity, NormalizedView, PixelDiffReason, PixelDiffRegion, PixelMetric};
 use crate::Result;
 use image::{DynamicImage, GenericImageView};
 

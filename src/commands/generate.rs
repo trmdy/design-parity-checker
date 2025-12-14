@@ -3,7 +3,9 @@ use std::process::ExitCode;
 
 use dpc_lib::output::DPC_OUTPUT_VERSION;
 use dpc_lib::types::ResourceKind;
-use dpc_lib::{parse_resource, DpcError, DpcOutput, GenerateCodeOutput, ResourceDescriptor, Summary, Viewport};
+use dpc_lib::{
+    parse_resource, DpcError, DpcOutput, GenerateCodeOutput, ResourceDescriptor, Summary, Viewport,
+};
 
 use crate::cli::OutputFormat;
 use crate::formatting::{render_error, write_output};
@@ -37,9 +39,7 @@ pub async fn run_generate_code(
     let viewport = Some(viewport);
     let input_res = match parse_resource(&input, input_type.map(resource_kind_from_cli)) {
         Ok(res) => res,
-        Err(err) => {
-            return render_error(DpcError::Config(err.to_string()), format, output.clone())
-        }
+        Err(err) => return render_error(DpcError::Config(err.to_string()), format, output.clone()),
     };
     if verbose {
         eprintln!(
