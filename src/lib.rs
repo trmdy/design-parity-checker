@@ -65,9 +65,22 @@ pub use metrics::{
     calculate_combined_score,
     // Concrete metric implementations (for custom configuration)
     cluster_diff_regions,
+    // Region clustering
+    cluster_regions,
+    cluster_regions_image_aware,
+    ClusteredRegion,
+    ClusteringConfig,
+    ImageAwareClusteringConfig,
     default_metrics,
     generate_top_issues,
     run_metrics,
+    // Semantic analysis
+    analyze_regions_batch,
+    SemanticAnalyzer,
+    SemanticAnalyzerConfig,
+    SemanticDiff,
+    SemanticDiffType,
+    // Metric implementations
     ColorPaletteMetric,
     ContentSimilarity,
     LayoutSimilarity,

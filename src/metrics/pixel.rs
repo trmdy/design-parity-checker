@@ -4,6 +4,7 @@ use crate::types::{DiffSeverity, NormalizedView, PixelDiffReason, PixelDiffRegio
 use crate::Result;
 use image::{DynamicImage, GenericImageView};
 
+use super::clustering::{cluster_regions, clustered_to_pixel_regions, ClusteringConfig};
 use super::{Metric, MetricKind, MetricResult};
 
 #[derive(Debug, Clone, Copy)]
@@ -27,6 +28,7 @@ impl Default for PixelDiffThresholds {
 pub struct PixelSimilarity {
     pub block_size: u32,
     pub thresholds: PixelDiffThresholds,
+    pub clustering: ClusteringConfig,
 }
 
 impl Default for PixelSimilarity {
@@ -34,6 +36,7 @@ impl Default for PixelSimilarity {
         Self {
             block_size: 32,
             thresholds: PixelDiffThresholds::default(),
+            clustering: ClusteringConfig::default(),
         }
     }
 }
@@ -56,7 +59,7 @@ impl PixelSimilarity {
 
         let score = compute_ssim(&ref_luma, &impl_luma);
         let diff_map = compute_diff_map(&ref_luma, &impl_luma);
-        let diff_regions = cluster_diff_regions(
+        let raw_regions = cluster_diff_regions(
             &diff_map,
             ref_luma.width(),
             ref_luma.height(),
@@ -64,9 +67,14 @@ impl PixelSimilarity {
             &self.thresholds,
         );
 
+        // Cluster adjacent regions into larger bounding boxes
+        let clustered = cluster_regions(&raw_regions, &self.clustering);
+        let diff_regions = clustered_to_pixel_regions(&clustered);
+
         Ok(PixelMetric {
             score,
             diff_regions,
+            semantic_diffs: None, // Populated by separate semantic analysis pass
         })
     }
 }
@@ -185,6 +193,7 @@ pub fn cluster_diff_regions(
                 height: block_h as f32 / height as f32,
                 severity,
                 reason: PixelDiffReason::PixelChange,
+                intensity: Some(avg),
             });
         }
     }
