@@ -6,7 +6,7 @@ use dpc_lib::output::DPC_OUTPUT_VERSION;
 use dpc_lib::types::ResourceKind;
 use dpc_lib::{
     calculate_combined_score, default_metrics, parse_resource, run_metrics, CompareOutput,
-    DpcError, DpcOutput, MetricKind, ResourceDescriptor, Viewport,
+    DpcError, DpcOutput, MetricKind, ResourceDescriptor, SemanticAnalyzer, Viewport,
 };
 
 use crate::cli::OutputFormat;
@@ -43,6 +43,8 @@ pub async fn run_compare(
     nav_timeout: u64,
     network_idle_timeout: u64,
     process_timeout: u64,
+    semantic_analysis: bool,
+    context: Option<String>,
 ) -> ExitCode {
     let config = match load_config(config_path.as_deref()) {
         Ok(cfg) => cfg,
@@ -211,17 +213,84 @@ pub async fn run_compare(
         eprintln!("Running metrics: {:?}", effective_metrics);
     }
     let all_metrics = default_metrics();
-    let metrics_scores = match run_metrics(&all_metrics, &effective_metrics, &ref_view, &impl_view)
-    {
-        Ok(scores) => scores,
-        Err(err) => {
-            return render_error(
-                DpcError::Config(format!("Failed to compute metrics: {}", err)),
-                format,
-                output.clone(),
-            )
+    let mut metrics_scores =
+        match run_metrics(&all_metrics, &effective_metrics, &ref_view, &impl_view) {
+            Ok(scores) => scores,
+            Err(err) => {
+                return render_error(
+                    DpcError::Config(format!("Failed to compute metrics: {}", err)),
+                    format,
+                    output.clone(),
+                )
+            }
+        };
+
+    // Run semantic analysis if enabled and we have pixel diff regions
+    if semantic_analysis {
+        if let Some(ref mut pixel_metric) = metrics_scores.pixel {
+            if !pixel_metric.diff_regions.is_empty() {
+                if verbose {
+                    eprintln!("Running semantic analysis on {} diff regions...", pixel_metric.diff_regions.len());
+                }
+
+                if let Some(analyzer) = SemanticAnalyzer::from_config(&config.semantic) {
+                    // Use image-aware clustering to separate different UI components
+                    match analyzer
+                        .analyze_diff_regions(
+                            &ref_view.screenshot_path,
+                            &impl_view.screenshot_path,
+                            &pixel_metric.diff_regions,
+                            context.as_deref(),
+                        )
+                        .await
+                    {
+                        Ok(semantic_diffs) => {
+                            if verbose {
+                                eprintln!("Semantic analysis found {} diff types", semantic_diffs.len());
+                                for diff in &semantic_diffs {
+                                    eprintln!("  - {}: {}", diff.diff_type, diff.description);
+                                }
+                            }
+                            // Convert to the types expected by PixelMetric
+                            let typed_diffs: Vec<dpc_lib::types::SemanticDiff> = semantic_diffs
+                                .into_iter()
+                                .map(|d| dpc_lib::types::SemanticDiff {
+                                    x: d.x,
+                                    y: d.y,
+                                    width: d.width,
+                                    height: d.height,
+                                    severity: d.severity,
+                                    diff_type: match d.diff_type {
+                                        dpc_lib::SemanticDiffType::TextContent => dpc_lib::types::SemanticDiffType::TextContent,
+                                        dpc_lib::SemanticDiffType::TextReflow => dpc_lib::types::SemanticDiffType::TextReflow,
+                                        dpc_lib::SemanticDiffType::Typography => dpc_lib::types::SemanticDiffType::Typography,
+                                        dpc_lib::SemanticDiffType::Layout => dpc_lib::types::SemanticDiffType::Layout,
+                                        dpc_lib::SemanticDiffType::Color => dpc_lib::types::SemanticDiffType::Color,
+                                        dpc_lib::SemanticDiffType::MissingElement => dpc_lib::types::SemanticDiffType::MissingElement,
+                                        dpc_lib::SemanticDiffType::ExtraElement => dpc_lib::types::SemanticDiffType::ExtraElement,
+                                        dpc_lib::SemanticDiffType::Spacing => dpc_lib::types::SemanticDiffType::Spacing,
+                                        dpc_lib::SemanticDiffType::ImageChange => dpc_lib::types::SemanticDiffType::ImageChange,
+                                        dpc_lib::SemanticDiffType::Decoration => dpc_lib::types::SemanticDiffType::Decoration,
+                                        dpc_lib::SemanticDiffType::Other => dpc_lib::types::SemanticDiffType::Other,
+                                    },
+                                    description: d.description,
+                                    confidence: d.confidence,
+                                })
+                                .collect();
+                            pixel_metric.semantic_diffs = Some(typed_diffs);
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Semantic analysis failed: {}", e);
+                        }
+                    }
+                } else {
+                    eprintln!(
+                        "Warning: --semantic-analysis requires an API key. Set DPC_VISION_API_KEY, OPENAI_API_KEY, or add [semantic] api_key to config"
+                    );
+                }
+            }
         }
-    };
+    }
 
     // Calculate combined score
     let similarity = calculate_combined_score(&metrics_scores, &score_weights);
