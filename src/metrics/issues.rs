@@ -270,10 +270,7 @@ fn issues_from_content(metric: &ContentMetric) -> Vec<RankedIssue> {
         } else {
             issues.push(RankedIssue::major(
                 PRIORITY_CONTENT,
-                format!(
-                    "{} text elements are missing in the implementation.",
-                    count
-                ),
+                format!("{} text elements are missing in the implementation.", count),
             ));
         }
     }

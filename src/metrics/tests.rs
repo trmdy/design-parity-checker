@@ -71,8 +71,8 @@ fn run_metrics_executes_only_selected_metrics() {
         Box::new(StubMetric::layout(0.7, layout_calls.clone())),
     ];
 
-    let scores = run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view)
-        .expect("should succeed");
+    let scores =
+        run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view).expect("should succeed");
 
     assert_eq!(*pixel_calls.borrow(), 1);
     assert_eq!(*layout_calls.borrow(), 0, "layout metric should be skipped");
@@ -87,8 +87,8 @@ fn run_metrics_returns_scores_for_selected_metric() {
     let metrics: Vec<Box<dyn Metric>> =
         vec![Box::new(StubMetric::pixel(0.92, Rc::new(RefCell::new(0))))];
 
-    let scores = run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view)
-        .expect("should succeed");
+    let scores =
+        run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view).expect("should succeed");
 
     let pixel = scores.pixel.expect("pixel metric should be present");
     assert_eq!(pixel.score, 0.92);
@@ -106,8 +106,8 @@ fn run_metrics_skips_structural_when_no_structure() {
     let impl_view = view_from_file(impl_img.path(), 4, 4);
     let metrics = default_metrics();
 
-    let scores = run_metrics(&metrics, &[], &ref_view, &impl_view)
-        .expect("should skip structural metrics");
+    let scores =
+        run_metrics(&metrics, &[], &ref_view, &impl_view).expect("should skip structural metrics");
 
     assert!(scores.pixel.is_some());
     assert!(scores.color.is_some());
@@ -717,8 +717,7 @@ fn content_metric_missing_and_extra_text_affect_score() {
     };
     assert!(content.score < 1.0);
     assert!(
-        content.extra_text.iter().any(|t| t.contains("extra"))
-            || !content.extra_text.is_empty()
+        content.extra_text.iter().any(|t| t.contains("extra")) || !content.extra_text.is_empty()
     );
 }
 

@@ -21,7 +21,7 @@ pub use transform::FigmaRenderOptions;
 // Re-export API types that may be needed externally
 pub use api_types::{
     FigmaBoundingBox, FigmaColor, FigmaDocument, FigmaFile, FigmaImageExport, FigmaNodeData,
-    FigmaNodesResponse, FigmaNodeWrapper, FigmaPaintData, FigmaTypeStyle, ImageFormat,
+    FigmaNodeWrapper, FigmaNodesResponse, FigmaPaintData, FigmaTypeStyle, ImageFormat,
 };
 
 use crate::types::{NormalizedView, ResourceKind};
@@ -93,11 +93,8 @@ pub async fn figma_to_normalized_view(
 
     let decoded_image = load_from_memory(&bytes)?;
     let source_dimensions = decoded_image.dimensions();
-    let (width, height, letterbox) = transform::finalize_figma_image(
-        decoded_image,
-        &options.output_path,
-        options.viewport,
-    )?;
+    let (width, height, letterbox) =
+        transform::finalize_figma_image(decoded_image, &options.output_path, options.viewport)?;
 
     let root_bb = node
         .document
