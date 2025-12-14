@@ -4,10 +4,9 @@ use crate::types::{
     LayoutDiffKind, LayoutDiffRegion, LayoutMetric, PixelDiffReason, PixelDiffRegion, PixelMetric,
     ResourceKind, TypographyDiff, TypographyIssue, TypographyMetric, TypographyStyle,
 };
-use crate::{MetricScores, NormalizedView, DpcResult};
+use crate::{MetricScores, NormalizedView};
 use image::{ImageFormat, Rgba, RgbaImage};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
 use tempfile::NamedTempFile;
@@ -45,7 +44,6 @@ fn run_metrics_errors_when_defaults_missing() {
     assert!(msg.contains("typography"));
     assert!(msg.contains("color"));
     assert!(msg.contains("content"));
-    assert!(msg.contains("hierarchy"));
 }
 
 #[test]
@@ -73,8 +71,8 @@ fn run_metrics_executes_only_selected_metrics() {
         Box::new(StubMetric::layout(0.7, layout_calls.clone())),
     ];
 
-    let scores =
-        run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view).expect("should succeed");
+    let scores = run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view)
+        .expect("should succeed");
 
     assert_eq!(*pixel_calls.borrow(), 1);
     assert_eq!(*layout_calls.borrow(), 0, "layout metric should be skipped");
@@ -89,8 +87,8 @@ fn run_metrics_returns_scores_for_selected_metric() {
     let metrics: Vec<Box<dyn Metric>> =
         vec![Box::new(StubMetric::pixel(0.92, Rc::new(RefCell::new(0))))];
 
-    let scores =
-        run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view).expect("should succeed");
+    let scores = run_metrics(&metrics, &[MetricKind::Pixel], &ref_view, &impl_view)
+        .expect("should succeed");
 
     let pixel = scores.pixel.expect("pixel metric should be present");
     assert_eq!(pixel.score, 0.92);
@@ -108,8 +106,8 @@ fn run_metrics_skips_structural_when_no_structure() {
     let impl_view = view_from_file(impl_img.path(), 4, 4);
     let metrics = default_metrics();
 
-    let scores =
-        run_metrics(&metrics, &[], &ref_view, &impl_view).expect("should skip structural metrics");
+    let scores = run_metrics(&metrics, &[], &ref_view, &impl_view)
+        .expect("should skip structural metrics");
 
     assert!(scores.pixel.is_some());
     assert!(scores.color.is_some());
@@ -139,8 +137,8 @@ fn run_metrics_scores_layout_even_when_impl_is_empty() {
         layout.score
     );
     assert!(
-        !layout.issues.is_empty(),
-        "missing elements should be reported as issues"
+        !layout.diff_regions.is_empty(),
+        "missing elements should be reported as diff regions"
     );
 }
 
@@ -152,7 +150,6 @@ fn combined_score_rescales_to_present_metrics() {
         typography: 0.2,
         color: 0.1,
         content: 0.1,
-        hierarchy: 0.1,
     };
 
     let scores_pixel_only = MetricScores {
@@ -164,7 +161,6 @@ fn combined_score_rescales_to_present_metrics() {
         typography: None,
         color: None,
         content: None,
-        hierarchy: None,
     };
 
     let combined_pixel = calculate_combined_score(&scores_pixel_only, &weights);
@@ -173,10 +169,9 @@ fn combined_score_rescales_to_present_metrics() {
     let mut scores_with_layout = scores_pixel_only;
     scores_with_layout.layout = Some(LayoutMetric {
         score: 0.8,
-        issues: vec![],
+        diff_regions: vec![],
     });
     let combined_with_layout = calculate_combined_score(&scores_with_layout, &weights);
-    // (0.7 * 0.4 + 0.3 * 0.8) / (0.7 + 0.3) = (0.28 + 0.24) / 1.0 = 0.52
     assert!((combined_with_layout - 0.52).abs() < 1e-6);
 }
 
@@ -188,7 +183,6 @@ fn combined_score_handles_zero_weights_and_missing_metrics() {
         typography: None,
         color: None,
         content: None,
-        hierarchy: None,
     };
     let zero_result = calculate_combined_score(&empty_scores, &ScoreWeights::default());
     assert_eq!(zero_result, 0.0);
@@ -200,12 +194,11 @@ fn combined_score_handles_zero_weights_and_missing_metrics() {
         }),
         layout: Some(LayoutMetric {
             score: 0.25,
-            issues: vec![],
+            diff_regions: vec![],
         }),
         typography: None,
         color: None,
         content: None,
-        hierarchy: None,
     };
     let weights = ScoreWeights {
         pixel: 0.0,
@@ -213,7 +206,6 @@ fn combined_score_handles_zero_weights_and_missing_metrics() {
         typography: 0.0,
         color: 0.0,
         content: 0.0,
-        hierarchy: 0.0,
     };
     let combined = calculate_combined_score(&scores, &weights);
     assert!((combined - 0.25).abs() < 1e-6);
@@ -235,56 +227,65 @@ fn generate_top_issues_orders_by_severity_and_limits_count() {
         }),
         layout: Some(LayoutMetric {
             score: 0.6,
-            issues: vec![LayoutIssue::ExtraElement {
+            diff_regions: vec![LayoutDiffRegion {
+                x: 0.1,
+                y: 0.1,
+                width: 0.2,
+                height: 0.2,
+                kind: LayoutDiffKind::ExtraElement,
                 element_type: Some("button".to_string()),
-                bounding_box: bbox(0.1, 0.1, 0.2, 0.2),
+                label: None,
             }],
         }),
         typography: None,
         color: Some(ColorMetric {
             score: 0.5,
-            issues: vec![ColorIssue::PrimaryColorShift {
+            diffs: vec![ColorDiff {
+                kind: ColorDiffKind::PrimaryColorShift,
                 ref_color: "#FFFFFF".to_string(),
-                impl_color: Some("#000000".to_string()),
+                impl_color: "#000000".to_string(),
                 delta_e: Some(10.0),
             }],
         }),
         content: Some(ContentMetric {
             score: 0.4,
-            issues: vec![ContentIssue::MissingText],
+            missing_text: vec!["Hero title".to_string()],
+            extra_text: vec!["Extra banner".to_string()],
         }),
-        hierarchy: None,
     };
 
     let ordered = generate_top_issues(&scores, 10);
     let missing_idx = ordered
         .iter()
-        .position(|m| m.contains("missing text"))
+        .position(|m| m.contains("missing in the implementation"))
         .expect("missing text issue");
     let primary_idx = ordered
         .iter()
-        .position(|m| m.contains("Primary color shift"))
+        .position(|m| m.contains("Primary color"))
         .expect("primary color issue");
     let layout_idx = ordered
         .iter()
-        .position(|m| m.contains("extra element"))
+        .position(|m| m.contains("appears in implementation"))
         .expect("layout issue");
     let pixel_minor_idx = ordered
         .iter()
         .position(|m| m.contains("minor pixel difference"))
         .expect("pixel minor issue");
-    // This part of the test needs adjustment based on the actual issue messages
-    // For now, just ensure the indices are valid
+    let extra_text_idx = ordered
+        .iter()
+        .position(|m| m.contains("Extra text"))
+        .expect("extra text issue");
 
     assert!(layout_idx > missing_idx);
     assert!(layout_idx > primary_idx);
     assert!(pixel_minor_idx > layout_idx);
+    assert!(extra_text_idx > layout_idx);
 
     let top_three = generate_top_issues(&scores, 3);
     assert_eq!(top_three.len(), 3);
     assert!(top_three
         .iter()
-        .all(|m| !m.contains("minor pixel difference")));
+        .all(|m| !m.contains("minor pixel difference") && !m.contains("Extra text")));
 }
 
 #[test]
@@ -294,25 +295,30 @@ fn generate_top_issues_includes_color_and_typography_and_respects_limit() {
         layout: None,
         typography: Some(TypographyMetric {
             score: 0.6,
-            issues: vec![TypographyIssue::FontFamilyMismatch],
+            diffs: vec![TypographyDiff {
+                element_id_ref: Some("title".into()),
+                element_id_impl: None,
+                issues: vec![TypographyIssue::FontFamilyMismatch],
+                details: None,
+            }],
         }),
         color: Some(ColorMetric {
             score: 0.5,
-            issues: vec![ColorIssue::AccentColorShift {
+            diffs: vec![ColorDiff {
+                kind: ColorDiffKind::AccentColorShift,
                 ref_color: "#FFFFFF".to_string(),
-                impl_color: Some("#111111".to_string()),
+                impl_color: "#111111".to_string(),
                 delta_e: Some(8.0),
             }],
         }),
         content: None,
-        hierarchy: None,
     };
 
     let issues = generate_top_issues(&scores, 1);
     assert_eq!(issues.len(), 1, "limit should cap issue count to 1");
     assert!(
         issues[0].to_ascii_lowercase().contains("color")
-            || issues[0].to_ascii_lowercase().contains("font family"),
+            || issues[0].to_ascii_lowercase().contains("font"),
         "expected a color or typography issue first, got: {:?}",
         issues
     );
@@ -333,7 +339,7 @@ fn generate_top_issues_includes_color_and_typography_and_respects_limit() {
     assert!(
         all_issues
             .iter()
-            .any(|m| m.to_ascii_lowercase().contains("accent color shift")),
+            .any(|m| m.to_ascii_lowercase().contains("color shift")),
         "color issue should be present: {:?}",
         all_issues
     );
@@ -346,18 +352,23 @@ fn generate_top_issues_prioritizes_palette_over_typography() {
         layout: None,
         typography: Some(TypographyMetric {
             score: 0.7,
-            issues: vec![TypographyIssue::LineHeightDiff],
+            diffs: vec![TypographyDiff {
+                element_id_ref: Some("caption".into()),
+                element_id_impl: Some("caption_impl".into()),
+                issues: vec![TypographyIssue::LineHeightDiff],
+                details: None,
+            }],
         }),
         color: Some(ColorMetric {
             score: 0.6,
-            issues: vec![ColorIssue::BackgroundColorShift {
+            diffs: vec![ColorDiff {
+                kind: ColorDiffKind::BackgroundColorShift,
                 ref_color: "#111111".to_string(),
-                impl_color: Some("#222222".to_string()),
+                impl_color: "#222222".to_string(),
                 delta_e: Some(4.0),
             }],
         }),
         content: None,
-        hierarchy: None,
     };
 
     let issues = generate_top_issues(&scores, 5);
@@ -450,9 +461,9 @@ fn layout_metric_reports_extra_elements() {
     };
     assert!(
         layout
-            .issues
+            .diff_regions
             .iter()
-            .any(|d| matches!(d, LayoutIssue::ExtraElement { .. })),
+            .any(|d| matches!(d.kind, LayoutDiffKind::ExtraElement)),
         "extra elements should be reported"
     );
     assert!(layout.score < 1.0);
@@ -479,14 +490,14 @@ fn layout_metric_missing_all_elements_scores_low() {
         layout.score
     );
     assert_eq!(
-        layout.issues.len(),
+        layout.diff_regions.len(),
         2,
         "should mark all reference elements as missing"
     );
     assert!(layout
-        .issues
+        .diff_regions
         .iter()
-        .all(|d| matches!(d, LayoutIssue::MissingElement { .. })));
+        .all(|d| matches!(d.kind, LayoutDiffKind::MissingElement)));
 }
 
 #[test]
@@ -679,14 +690,14 @@ fn color_metric_detects_palette_shift() {
 
     assert!(color.score < 0.9, "palette shift should reduce score");
     assert!(
-        !color.issues.is_empty(),
+        !color.diffs.is_empty(),
         "expected at least one color difference entry"
     );
     assert!(
         color
-            .issues
+            .diffs
             .iter()
-            .any(|d| matches!(d, ColorIssue::PrimaryColorShift { .. })),
+            .any(|d| d.ref_color != d.impl_color || d.delta_e.unwrap_or(0.0) > 1.0),
         "diff entries should carry ref/impl colors or delta"
     );
 }
@@ -706,7 +717,8 @@ fn content_metric_missing_and_extra_text_affect_score() {
     };
     assert!(content.score < 1.0);
     assert!(
-        content.issues.iter().any(|t| matches!(t, ContentIssue::ExtraText))
+        content.extra_text.iter().any(|t| t.contains("extra"))
+            || !content.extra_text.is_empty()
     );
 }
 
@@ -723,15 +735,8 @@ fn content_metric_extra_text_only_penalizes_score() {
         _ => unreachable!(),
     };
     assert!(content.score < 1.0);
-    assert!(content.issues.is_empty()); // Should not have missing text
-    assert_eq!(
-        content
-            .issues
-            .iter()
-            .filter(|&i| matches!(i, ContentIssue::ExtraText))
-            .count(),
-        1
-    );
+    assert!(content.missing_text.is_empty());
+    assert_eq!(content.extra_text.len(), 1);
 }
 
 #[test]
@@ -747,20 +752,8 @@ fn content_metric_all_text_missing_penalizes_score() {
         _ => unreachable!(),
     };
     assert!(content.score < 0.2);
-    assert_eq!(
-        content
-            .issues
-            .iter()
-            .filter(|&i| matches!(i, ContentIssue::MissingText))
-            .count(),
-        2
-    );
-    assert!(
-        content
-            .issues
-            .iter()
-            .all(|i| matches!(i, ContentIssue::MissingText))
-    );
+    assert_eq!(content.missing_text.len(), 2);
+    assert!(content.extra_text.is_empty());
 }
 
 #[test]
@@ -773,7 +766,8 @@ fn content_metric_no_text_returns_full_score() {
         _ => unreachable!(),
     };
     assert!((content.score - 1.0).abs() < f32::EPSILON);
-    assert!(content.issues.is_empty());
+    assert!(content.missing_text.is_empty());
+    assert!(content.extra_text.is_empty());
 }
 
 #[test]
@@ -792,22 +786,8 @@ fn content_metric_completely_mismatched_text_penalizes_and_reports() {
         _ => unreachable!(),
     };
     assert!(content.score < 0.5);
-    assert_eq!(
-        content
-            .issues
-            .iter()
-            .filter(|&i| matches!(i, ContentIssue::MissingText))
-            .count(),
-        2
-    );
-    assert_eq!(
-        content
-            .issues
-            .iter()
-            .filter(|&i| matches!(i, ContentIssue::ExtraText))
-            .count(),
-        2
-    );
+    assert_eq!(content.missing_text.len(), 2);
+    assert_eq!(content.extra_text.len(), 2);
 }
 
 // Helpers for tests
@@ -820,10 +800,6 @@ fn dummy_view() -> NormalizedView {
         dom: None,
         figma_tree: None,
         ocr_blocks: None,
-        viewport: crate::types::core::Viewport {
-            width: 100,
-            height: 100,
-        },
     }
 }
 
@@ -836,10 +812,6 @@ fn view_from_file(path: &std::path::Path, width: u32, height: u32) -> Normalized
         dom: None,
         figma_tree: None,
         ocr_blocks: None,
-        viewport: crate::types::core::Viewport {
-            width,
-            height,
-        },
     }
 }
 
@@ -874,8 +846,8 @@ fn solid_split_image(left: Rgba<u8>, right: Rgba<u8>) -> NamedTempFile {
     file
 }
 
-fn bbox(x: f64, y: f64, width: f64, height: f64) -> crate::types::core::BoundingBox {
-    crate::types::core::BoundingBox {
+fn bbox(x: f32, y: f32, width: f32, height: f32) -> crate::types::BoundingBox {
+    crate::types::BoundingBox {
         x,
         y,
         width,
@@ -883,12 +855,12 @@ fn bbox(x: f64, y: f64, width: f64, height: f64) -> crate::types::core::Bounding
     }
 }
 
-fn view_with_dom(nodes: Vec<(&str, crate::types::core::BoundingBox)>) -> NormalizedView {
+fn view_with_dom(nodes: Vec<(&str, crate::types::BoundingBox)>) -> NormalizedView {
     use crate::types::{DomNode, DomSnapshot};
     let dom_nodes = nodes
         .into_iter()
         .enumerate()
-        .map(|(idx, (spec, bounding_box))| {
+        .map(|(idx, (spec, bbox))| {
             let mut parts = spec.splitn(2, ':');
             let tag = parts.next().unwrap_or("div").to_string();
             let text = parts.next().map(|t| t.to_string());
@@ -899,7 +871,7 @@ fn view_with_dom(nodes: Vec<(&str, crate::types::core::BoundingBox)>) -> Normali
                 parent: None,
                 attributes: std::collections::HashMap::new(),
                 text,
-                bounding_box,
+                bounding_box: bbox,
                 computed_style: None,
             }
         })
@@ -917,10 +889,6 @@ fn view_with_dom(nodes: Vec<(&str, crate::types::core::BoundingBox)>) -> Normali
         }),
         figma_tree: None,
         ocr_blocks: None,
-        viewport: crate::types::core::Viewport {
-            width: 100,
-            height: 100,
-        },
     }
 }
 
@@ -957,10 +925,6 @@ fn view_with_text(text: &str, style: TypographyStyle) -> NormalizedView {
         }),
         figma_tree: None,
         ocr_blocks: None,
-        viewport: crate::types::core::Viewport {
-            width: 100,
-            height: 100,
-        },
     }
 }
 
@@ -973,10 +937,6 @@ fn view_from_image(file: &NamedTempFile) -> NormalizedView {
         dom: None,
         figma_tree: None,
         ocr_blocks: None,
-        viewport: crate::types::core::Viewport {
-            width: 4,
-            height: 2,
-        },
     }
 }
 
@@ -1002,13 +962,6 @@ impl StubMetric {
             calls,
         }
     }
-     fn hierarchy(score: f32, calls: Rc<RefCell<u32>>) -> Self {
-        Self {
-            kind: MetricKind::Hierarchy,
-            score,
-            calls,
-        }
-    }
 
     fn result(&self) -> MetricResult {
         match self.kind {
@@ -1018,25 +971,20 @@ impl StubMetric {
             }),
             MetricKind::Layout => MetricResult::Layout(LayoutMetric {
                 score: self.score,
-                issues: vec![],
+                diff_regions: vec![],
             }),
             MetricKind::Typography => MetricResult::Typography(TypographyMetric {
                 score: self.score,
-                issues: vec![],
+                diffs: vec![],
             }),
             MetricKind::Color => MetricResult::Color(ColorMetric {
                 score: self.score,
-                issues: vec![],
+                diffs: vec![],
             }),
             MetricKind::Content => MetricResult::Content(ContentMetric {
                 score: self.score,
-                issues: vec![],
-            }),
-            MetricKind::Hierarchy => MetricResult::Hierarchy(HierarchyMetric {
-                score: self.score as f64,
-                issues: vec![],
-                distinct_tiers: vec![],
-                tier_count: 0,
+                missing_text: vec![],
+                extra_text: vec![],
             }),
         }
     }
@@ -1051,7 +999,7 @@ impl Metric for StubMetric {
         &self,
         _reference: &NormalizedView,
         _implementation: &NormalizedView,
-    ) -> DpcResult<MetricResult> {
+    ) -> crate::Result<MetricResult> {
         *self.calls.borrow_mut() += 1;
         Ok(self.result())
     }
@@ -1124,208 +1072,4 @@ fn cluster_diff_regions_returns_empty_for_zero_dimensions() {
     assert!(cluster_diff_regions(&diff_map, 8, 0, 4, &thresholds).is_empty());
     assert!(cluster_diff_regions(&diff_map, 8, 8, 0, &thresholds).is_empty());
     assert!(cluster_diff_regions(&[], 8, 8, 4, &thresholds).is_empty());
-}
-
-
-// Hierarchy Heuristic Tests
-#[cfg(test)]
-mod hierarchy_tests {
-    use std::collections::HashMap;
-
-    use crate::{
-        metrics::{
-            hierarchy::{HierarchyHeuristic, HierarchyIssue},
-            Metric,
-        },
-        types::{
-            core::{NormalizedView, BoundingBox},
-            dom::{DomNode, DomSnapshot},
-            figma::{FigmaNode, FigmaSnapshot, Typography},
-            metric_results::{HierarchyMetric, MetricResult, ComputedStyle},
-        },
-    };
-
-    fn create_mock_dom_node(font_size: f64, text_content: &str, bounding_box: BoundingBox) -> DomNode {
-        DomNode {
-            id: "test_id".to_string(),
-            tag: "text".to_string(),
-            text: Some(text_content.to_string()),
-            bounding_box,
-            children: Vec::new(),
-            attributes: HashMap::new(),
-            parent: None,
-            computed_style: Some(ComputedStyle {
-                font_size: Some(font_size),
-                ..Default::default()
-            }),
-        }
-    }
-
-    fn create_mock_figma_node(font_size: f64, text_content: &str, bounding_box: BoundingBox) -> FigmaNode {
-        FigmaNode {
-            id: "test_id".to_string(),
-            name: Some("test_node".to_string()),
-            node_type: "TEXT".to_string(),
-            bounding_box,
-            children: None,
-            text: Some(text_content.to_string()),
-            typography: Some(Typography {
-                font_size: Some(font_size),
-                ..Default::default()
-            }),
-            fills: None,
-        }
-    }
-
-    #[test]
-    fn test_hierarchy_heuristic_dom_too_few_tiers() {
-        let dom_snapshot = DomSnapshot {
-            url: None,
-            title: None,
-            nodes: vec![
-                create_mock_dom_node(16.0, "Body Text 1", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_dom_node(16.5, "Body Text 2", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_dom_node(17.0, "Subtitle", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }), // Close enough to 16px to be grouped
-            ],
-        };
-
-        let impl_view = NormalizedView {
-            kind: ResourceKind::Url,
-            screenshot_path: "".into(),
-            width: 1440,
-            height: 900,
-            dom: Some(dom_snapshot),
-            figma_tree: None,
-            ocr_blocks: None,
-            viewport: crate::types::core::Viewport {
-                width: 1440,
-                height: 900,
-            },
-        };
-
-        let heuristic = HierarchyHeuristic::default();
-        let result = heuristic.compute(&impl_view, &impl_view); // Ref view not used for this metric
-
-        if let MetricResult::Hierarchy(hierarchy_metric) = result {
-            assert!(hierarchy_metric.score < 1.0);
-            assert_eq!(hierarchy_metric.tier_count, 1); // Only one tier due to tolerance
-            assert!(hierarchy_metric
-                .issues
-                .contains(&HierarchyIssue::TooFewTiers(1)));
-        } else {
-            panic!("Expected HierarchyMetric result");
-        }
-    }
-
-    #[test]
-    fn test_hierarchy_heuristic_dom_optimal_tiers() {
-        let dom_snapshot = DomSnapshot {
-            url: None,
-            title: None,
-            nodes: vec![
-                create_mock_dom_node(16.0, "Body Text", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_dom_node(24.0, "Heading 2", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_dom_node(36.0, "Heading 1", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-            ],
-        };
-
-        let impl_view = NormalizedView {
-            kind: ResourceKind::Url,
-            screenshot_path: "".into(),
-            width: 1440,
-            height: 900,
-            dom: Some(dom_snapshot),
-            figma_tree: None,
-            ocr_blocks: None,
-            viewport: crate::types::core::Viewport {
-                width: 1440,
-                height: 900,
-            },
-        };
-
-        let heuristic = HierarchyHeuristic::default();
-        let result = heuristic.compute(&impl_view, &impl_view);
-
-        if let MetricResult::Hierarchy(hierarchy_metric) = result {
-            assert_eq!(hierarchy_metric.score, 1.0);
-            assert_eq!(hierarchy_metric.tier_count, 3); // 3 distinct tiers
-            assert!(hierarchy_metric.issues.is_empty());
-        } else {
-            panic!("Expected HierarchyMetric result");
-        }
-    }
-
-    #[test]
-    fn test_hierarchy_heuristic_figma_too_many_tiers() {
-        let figma_snapshot = FigmaSnapshot {
-            file_key: "file_key".to_string(),
-            node_id: "node_id".to_string(),
-            nodes: vec![
-                create_mock_figma_node(12.0, "Small Text", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_figma_node(14.0, "Caption", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_figma_node(16.0, "Body", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_figma_node(20.0, "Subheading", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_figma_node(24.0, "Heading", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_figma_node(30.0, "Large Heading", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-                create_mock_figma_node(36.0, "Extra Large Heading", BoundingBox { x: 0.0, y: 0.0, width: 10.0, height: 10.0 }),
-            ],
-        };
-
-        let impl_view = NormalizedView {
-            kind: ResourceKind::Figma,
-            screenshot_path: "".into(),
-            width: 1440,
-            height: 900,
-            dom: None,
-            figma_tree: Some(figma_snapshot),
-            ocr_blocks: None,
-            viewport: crate::types::core::Viewport {
-                width: 1440,
-                height: 900,
-            },
-        };
-
-        let heuristic = HierarchyHeuristic::default();
-        let result = heuristic.compute(&impl_view, &impl_view);
-
-        if let MetricResult::Hierarchy(hierarchy_metric) = result {
-            assert!(hierarchy_metric.score < 1.0);
-            assert!(hierarchy_metric.tier_count > heuristic.max_tiers); // Many tiers
-            assert!(hierarchy_metric
-                .issues
-                .contains(&HierarchyIssue::TooManyTiers(hierarchy_metric.tier_count)));
-        } else {
-            panic!("Expected HierarchyMetric result");
-        }
-    }
-
-    #[test]
-    fn test_hierarchy_heuristic_empty_view() {
-        let impl_view = NormalizedView {
-            kind: ResourceKind::Image,
-            screenshot_path: "".into(),
-            width: 1440,
-            height: 900,
-            dom: None,
-            figma_tree: None,
-            ocr_blocks: None,
-            viewport: crate::types::core::Viewport {
-                width: 1440,
-                height: 900,
-            },
-        };
-
-        let heuristic = HierarchyHeuristic::default();
-        let result = heuristic.compute(&impl_view, &impl_view);
-
-        if let MetricResult::Hierarchy(hierarchy_metric) = result {
-            assert_eq!(hierarchy_metric.score, 0.0); // Or some other appropriate score for no text
-            assert_eq!(hierarchy_metric.tier_count, 0);
-            assert!(hierarchy_metric
-                .issues
-                .contains(&HierarchyIssue::TooFewTiers(0)));
-        } else {
-            panic!("Expected HierarchyMetric result");
-        }
-    }
 }

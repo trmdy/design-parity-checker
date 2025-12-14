@@ -64,7 +64,6 @@ Returns a `not_implemented` finding; exit code 0.
 - Images: loaded and letterboxed to viewport (`src/image_loader.rs`).
 - URLs: rendered headless via Node + Playwright; waits for navigation then `networkidle`, captures screenshot and DOM (incl. computed styles).
 - Figma: uses REST API to export the specified node; requires `FIGMA_TOKEN` and `node-id` in the URL query.
-- **OCR** (optional): When comparing images without DOM/Figma text data, OCR text extraction via Tesseract can provide text blocks for content metrics. Enable with the `ocr` feature flag (requires Tesseract installed on the system).
 - Ignore regions example (`--ignore-regions regions.json`):
   ```json
   [
@@ -167,19 +166,6 @@ cargo test
 cargo clippy --all-targets --all-features
 ```
 URL/Figma tests may require Node/Playwright/FIGMA_TOKEN; use mock env vars for offline runs.
-
-### OCR feature
-To enable OCR text extraction (requires Tesseract installed):
-```bash
-# macOS
-brew install tesseract
-
-# Ubuntu/Debian
-sudo apt install tesseract-ocr libtesseract-dev libleptonica-dev
-
-# Build with OCR
-cargo build --features ocr
-```
 
 ## CI integration
 - Recommended flags: `--format json` (or `--format pretty --output results.json`), plus `--artifacts-dir` to persist screenshots and DOM snapshots for uploads.

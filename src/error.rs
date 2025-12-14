@@ -175,7 +175,6 @@ impl From<ImageLoadError> for DpcError {
                 "Failed to save image: {}",
                 msg
             ))),
-            ImageLoadError::Ocr(msg) => DpcError::Metric(format!("OCR extraction failed: {}", msg)),
         }
     }
 }

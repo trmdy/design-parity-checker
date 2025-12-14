@@ -282,6 +282,7 @@ fn font_weight_category(weight: Option<&str>) -> Option<u16> {
     }
 }
 
+
 impl Metric for TypographySimilarity {
     fn kind(&self) -> MetricKind {
         MetricKind::Typography

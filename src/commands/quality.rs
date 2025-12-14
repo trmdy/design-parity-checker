@@ -38,7 +38,9 @@ pub async fn run_quality(
     }
     let input_res = match parse_resource(&input, input_type.map(resource_kind_from_cli)) {
         Ok(res) => res,
-        Err(err) => return render_error(DpcError::Config(err.to_string()), format, output.clone()),
+        Err(err) => {
+            return render_error(DpcError::Config(err.to_string()), format, output.clone())
+        }
     };
     if verbose {
         eprintln!(

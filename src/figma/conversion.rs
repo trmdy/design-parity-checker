@@ -7,7 +7,11 @@ use crate::types::{
 use super::api_types::{FigmaBoundingBox, FigmaNodeData, FigmaPaintData, FigmaTypeStyle};
 
 /// Build a FigmaSnapshot from raw Figma API data.
-pub fn build_figma_snapshot(file_key: &str, node_id: &str, root: &FigmaNodeData) -> FigmaSnapshot {
+pub fn build_figma_snapshot(
+    file_key: &str,
+    node_id: &str,
+    root: &FigmaNodeData,
+) -> FigmaSnapshot {
     let mut nodes = Vec::new();
     collect_figma_nodes(root, &mut nodes);
 
