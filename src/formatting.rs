@@ -345,6 +345,7 @@ mod tests {
             pixel: Some(PixelMetric {
                 score: 0.99,
                 diff_regions: vec![],
+                semantic_diffs: None,
             }),
             layout: Some(LayoutMetric {
                 score: 0.75,
@@ -426,6 +427,7 @@ mod tests {
                 pixel: Some(PixelMetric {
                     score: 0.96,
                     diff_regions: Vec::new(),
+                    semantic_diffs: None,
                 }),
                 layout: None,
                 typography: None,

@@ -156,6 +156,7 @@ fn combined_score_rescales_to_present_metrics() {
         pixel: Some(PixelMetric {
             score: 0.4,
             diff_regions: vec![],
+            semantic_diffs: None,
         }),
         layout: None,
         typography: None,
@@ -191,6 +192,7 @@ fn combined_score_handles_zero_weights_and_missing_metrics() {
         pixel: Some(PixelMetric {
             score: 1.0,
             diff_regions: vec![],
+            semantic_diffs: None,
         }),
         layout: Some(LayoutMetric {
             score: 0.25,
@@ -223,7 +225,9 @@ fn generate_top_issues_orders_by_severity_and_limits_count() {
                 height: 0.2,
                 severity: DiffSeverity::Minor,
                 reason: PixelDiffReason::PixelChange,
+                intensity: None,
             }],
+            semantic_diffs: None,
         }),
         layout: Some(LayoutMetric {
             score: 0.6,
@@ -967,6 +971,7 @@ impl StubMetric {
             MetricKind::Pixel => MetricResult::Pixel(PixelMetric {
                 score: self.score,
                 diff_regions: vec![],
+                semantic_diffs: None,
             }),
             MetricKind::Layout => MetricResult::Layout(LayoutMetric {
                 score: self.score,
