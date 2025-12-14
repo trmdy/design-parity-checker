@@ -32,7 +32,7 @@ Artifacts:
 - Common causes: missing Playwright (`npm install playwright && npx playwright install chromium`), missing `FIGMA_TOKEN` / `node-id` on Figma URLs, invalid viewport (`WIDTHxHEIGHT`), unsupported image extension, timeouts (raise `--nav-timeout` / `--network-idle-timeout`).
 
 ## Exit codes
-- `0`: compare passed (similarity >= threshold) or stub commands succeeded.
+- `0`: compare passed (similarity >= threshold), generate-code succeeded, or quality succeeded.
 - `1`: compare failed threshold.
 - `2`: configuration/network/runtime errors.
 

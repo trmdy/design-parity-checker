@@ -2,11 +2,11 @@
 
 Commands:
 - `dpc compare --ref <resource> --impl <resource> [--ref-type/--impl-type] [--viewport WxH] [--threshold FLOAT] [--metrics list] [--ignore-selectors ".ads,#banner"] [--ignore-regions regions.json] [--format json|pretty] [--output PATH] [--keep-artifacts|--artifacts-dir PATH]`
-- `dpc generate-code --input <resource> [--stack html+tailwind] [--viewport WxH] [--output PATH] [--format json|pretty]` (stub)
-- `dpc quality --input <resource> [--viewport WxH] [--output PATH] [--format json|pretty]` (stub)
+- `dpc generate-code --input <resource> [--stack html+tailwind] [--viewport WxH] [--output PATH] [--format json|pretty]` (codegen backend; requires DPC_MOCK_CODE|DPC_CODEGEN_CMD|DPC_CODEGEN_URL)
+- `dpc quality --input <resource> [--viewport WxH] [--output PATH] [--format json|pretty]` (heuristic)
 
 Global flags:
-- `--config <PATH>`: optional TOML to set defaults (viewport, threshold, metric weights, timeouts) when wiring is enabled.
+- `--config <PATH>`: optional TOML to set defaults (viewport, threshold, metric weights, timeouts); CLI flags override.
 - `--verbose`: prints basic progress.
 
 Key options:
@@ -20,7 +20,7 @@ Key options:
 
 Outputs:
 - `--format json|pretty`: on a TTY with no `--output`, `pretty` renders a human-readable summary (status badge, similarity, top issues, metrics, artifacts). When piping or using `--output`, both formats emit JSON; `pretty` pretty-prints JSON for readability while keeping schema identical.
-- Exit codes: 0 pass / stub success; 1 threshold fail; 2 errors.
+- Exit codes: 0 pass / command success; 1 threshold fail; 2 errors.
   - Error remediation hints are included (e.g., install Playwright/Chromium, set FIGMA_TOKEN and node-id, check image extension, raise timeouts).
  - Artifacts block (when `--keep-artifacts` or `--artifacts-dir` is used) surfaces the directory plus paths to screenshots, DOM/Figma snapshots, and optional diff heatmap:
 ```json
@@ -61,7 +61,8 @@ Resources:
   `dpc compare --ref https://design --impl https://build --format pretty --output results.json --artifacts-dir artifacts/run2`
 - TTY human summary (no output file):  
   `dpc compare --ref https://design --impl https://build --format pretty`
-- Generate code (stub output):  
-  `dpc generate-code --input https://www.figma.com/file/FILE/Design?node-id=1-2 --stack html+tailwind --format json`
-- Quality (experimental stub):  
+- Generate code (codegen backend):  
+  `DPC_MOCK_CODE="<main>demo</main>" dpc generate-code --input https://www.figma.com/file/FILE/Design?node-id=1-2 --stack html+tailwind --format json --output demo.html`  
+  Backends resolve in order: `DPC_MOCK_CODE` / `DPC_MOCK_CODE_PATH`, then `DPC_CODEGEN_CMD` (+ `DPC_CODEGEN_ARGS`), then `DPC_CODEGEN_URL` (+ `DPC_CODEGEN_API_KEY`). If none are set, generate-code returns a config error (exit 2). JSON always prints to stdout; `--output` writes the code file.
+- Quality (heuristic findings):  
   `dpc quality --input impl.png --format pretty`

@@ -1,59 +1,29 @@
-# Configuration (proposal)
+# Configuration
 
-> Note: Config file wiring may be in progress. This doc captures intended keys and defaults to unblock BXG/config work.
+DPC accepts a TOML config file (e.g., `dpc.toml`) via `--config <path>`. CLI flags always override config values.
 
-## File format
-TOML, e.g. `dpc.toml`.
+## Supported keys
+- `viewport`: either `"WIDTHxHEIGHT"` (e.g., `"1440x900"`) or a table `{ width = 1440, height = 900 }`
+- `threshold`: `0.0`–`1.0`
+- `[metric_weights]`: `pixel`, `layout`, `typography`, `color`, `content` (all must be > 0)
+- `[timeouts]`: `navigation`, `network_idle`, `process` as human-friendly durations (`"30s"`, `"2m"`, etc.)
 
-## Keys and defaults
+Invalid or missing values yield a config error (exit code 2) before any rendering. Use `--verbose` to log the effective config.
+
+## Example
 ```toml
-[compare]
-viewport = "1440x900"
-threshold = 0.95
-metrics = ["pixel", "layout", "typography", "color", "content"]
-ignore_selectors = []
-
-[weights]
-pixel = 0.35
-layout = 0.25
-typography = 0.15
-color = 0.15
-content = 0.10
-
-[timeouts]
-navigation_ms = 30000        # Playwright navigate timeout
-network_idle_ms = 10000      # networkidle wait
-process_ms = 45000           # overall browser render budget
-
-[artifacts]
-keep = false
-directory = ""               # optional; if set implies keep
-```
-
-## Notes
-- `viewport` should parse as WIDTHxHEIGHT.
-- `metrics` is optional; when omitted defaults apply. When both inputs lack DOM/figma, layout/typography/content are skipped.
-- `ignore_selectors` is a comma/array list of CSS selectors for DOM-only ignores.
-- `ignore_regions` remains a CLI flag (JSON file) for masking pixel/color; not proposed in TOML yet.
-- `weights` renormalize over present metrics when some are absent.
-- `timeouts` apply to URL/Playwright renders; `process` is the outer Playwright budget. Figma uses API timeouts internally.
-- `artifacts.keep`/`directory` mirror `--keep-artifacts`/`--artifacts-dir`.
-
-## CLI interplay (proposed)
-- `--config path` opt-in: load TOML, then CLI flags override.
-- If `directory` is set, treat as keep=true.
-- Invalid keys/values should yield a config error (exit 2) with clear remediation.
-
-## Example minimal
-```toml
-[compare]
 viewport = "1280x720"
 threshold = 0.9
 
-[weights]
+[metric_weights]
 pixel = 0.4
-layout = 0.3
-typography = 0.1
-color = 0.1
+layout = 0.2
+typography = 0.15
+color = 0.15
 content = 0.1
+
+[timeouts]
+navigation = "20s"
+network_idle = "8s"
+process = "45s"
 ```

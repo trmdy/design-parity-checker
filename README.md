@@ -4,7 +4,8 @@ CLI tool to measure how closely an implementation matches a reference design (Fi
 
 ## Current state
 - `compare` runs end-to-end for URL, image, and Figma inputs: renders, normalizes, executes metrics, and reports pass/fail.
-- `generate-code` and `quality` are **placeholders** that return structured `not_implemented` summaries with exit code 0.
+- `generate-code` renders the input, calls a screenshot-to-code backend (HTTP or command), and returns HTML+Tailwind; supports mocks for offline runs.
+- `quality` returns heuristic findings (structure/text/actions/media/OCR) with a normalized score.
 - Metrics implemented: pixel, layout, typography, color, content (see `src/metrics.rs`).
 - Pretty output: interactive TTY runs render a human-readable summary (PASS/FAIL badge, similarity, top issues, metrics, artifact paths). When piping or using `--output`, even `--format pretty` emits JSON (pretty-printed) to keep pipelines stable.
 
@@ -21,6 +22,7 @@ Ensure `FIGMA_TOKEN` (or `FIGMA_OAUTH_TOKEN`) is set if you will process Figma U
 For a concise CLI reference with examples, see `docs/cli_usage.md` (includes ignore-regions and artifacts examples, plus a ready-made mask at `test_assets/ignore_regions_example.json`).
 
 Artifacts (screenshots/DOM/Figma snapshots) are kept when you pass `--keep-artifacts` or `--artifacts-dir` (implies keep). Ignore regions (`--ignore-regions regions.json`) accept JSON rectangles `{x,y,width,height}` (or `w,h`), using px or 0–1 normalized to the viewport; masking applies before pixel/color metrics.
+Optional config: `--config dpc.toml` sets defaults for viewport, threshold, metric weights, and timeouts; CLI flags override and invalid configs exit with code 2 before rendering.
 
 ### compare
 ```
@@ -47,17 +49,19 @@ dpc compare --ref https://example.com/design \
             --format pretty
 ```
 
-### generate-code (stub)
+### generate-code (codegen)
 ```
-dpc generate-code --input <resource> [--stack html+tailwind] [--viewport WIDTHxHEIGHT] [--output PATH]
+dpc generate-code --input <resource> [--stack html+tailwind] [--viewport WIDTHxHEIGHT] [--output PATH] [--format json|pretty]
 ```
-Returns a `not_implemented` summary; exit code 0.
+- Uses a codegen backend in this order: `DPC_MOCK_CODE` / `DPC_MOCK_CODE_PATH` (offline), `DPC_CODEGEN_CMD` (+ optional `DPC_CODEGEN_ARGS`), `DPC_CODEGEN_URL` (+ optional `DPC_CODEGEN_API_KEY`). If none are set, the command returns a config error (exit 2).
+- Input is normalized (URL/Figma/image) and screenshot is sent to the backend as base64; `--viewport` controls URL/Figma renders. Only `html+tailwind` is accepted for now.
+- JSON always prints to stdout; `--output` writes the generated code to a file. Pretty output prints a short preview + code length when on a TTY.
 
-### quality (stub)
+### quality (heuristic)
 ```
 dpc quality --input <resource> [--viewport WIDTHxHEIGHT] [--format json|pretty]
 ```
-Returns a `not_implemented` finding; exit code 0.
+Returns heuristic findings (structure/text/actions/media/OCR) and a normalized score; exit code 0.
 
 ## Inputs and normalization
 - Resource kinds: `url`, `image`, `figma` (auto-detected).
@@ -134,7 +138,7 @@ Returns a `not_implemented` finding; exit code 0.
 - Combined score uses weights pixel 0.35, layout 0.25, typography 0.15, color 0.15, content 0.10 (see `ScoreWeights`).
 
 ## Exit codes
-- `0`: compare passed (similarity >= threshold), or stub commands succeeded.
+- `0`: compare passed (similarity >= threshold), generate-code succeeded, or quality succeeded.
 - `1`: compare failed threshold.
 - `2`: configuration/network/runtime errors.
 
@@ -142,7 +146,7 @@ Returns a `not_implemented` finding; exit code 0.
 - Browser defaults: navigation 30s, network idle 10s, process timeout 45s, headless on. Verbose mode logs capture stages (launch, navigate, network-idle, capture).
 - Playwright requires the `playwright` npm package and a Chromium download (`npx playwright install chromium`).
 - Figma requires `FIGMA_TOKEN`; `node-id` must be present for the target frame/node.
-- Optional config file: `--config dpc.toml` sets defaults for viewport, threshold, metric weights, and timeouts. CLI flags override config when provided. Example:
+- Optional config file: `--config dpc.toml` sets defaults for viewport, threshold, metric weights, and timeouts. CLI flags override when provided. `viewport` accepts either `"WIDTHxHEIGHT"` or `{ width = 1440, height = 900 }`, and values are validated (threshold 0–1, weights > 0, timeouts > 0). Invalid config exits with code 2 before rendering. Example:
   ```toml
   viewport = "1280x720"
   threshold = 0.9
@@ -169,7 +173,7 @@ URL/Figma tests may require Node/Playwright/FIGMA_TOKEN; use mock env vars for o
 
 ## CI integration
 - Recommended flags: `--format json` (or `--format pretty --output results.json`), plus `--artifacts-dir` to persist screenshots and DOM snapshots for uploads.
-- Exit codes are CI-friendly: `0` pass/stub success, `1` threshold fail, `2` configuration/runtime errors.
+- Exit codes are CI-friendly: `0` pass/command success, `1` threshold fail, `2` configuration/runtime errors.
 - Typical steps:
   1. Install deps (`npm install playwright && npx playwright install chromium` if comparing URLs).
   2. Export FIGMA_TOKEN for Figma flows.
@@ -181,6 +185,7 @@ URL/Figma tests may require Node/Playwright/FIGMA_TOKEN; use mock env vars for o
 - Viewport must be `WIDTHxHEIGHT` (e.g., `1440x900`).
 - Unsupported images: ensure file exists and extension is png/jpg/jpeg/webp/gif.
 - Figma: ensure `FIGMA_TOKEN` is set and the URL includes `node-id`.
+- generate-code: set a backend via `DPC_CODEGEN_URL` (+ optional `DPC_CODEGEN_API_KEY`) or `DPC_CODEGEN_CMD` (+ optional `DPC_CODEGEN_ARGS`); for offline runs set `DPC_MOCK_CODE` or `DPC_MOCK_CODE_PATH`.
 - Ignore regions: coordinates map to the normalized viewport. If your inputs are scaled up from tiny fixtures, use a region at least as large as the viewport to fully mask differences.
 - Remediation hints: CLI errors include suggested fixes (Playwright install, FIGMA_TOKEN/node-id, image extension, timeouts). Exit code `2` indicates configuration/runtime, not similarity.
 

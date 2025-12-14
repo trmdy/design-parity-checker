@@ -24,9 +24,9 @@ Practical steps to validate the CLI today, with and without external deps.
 7) Config file + flag precedence (use --verbose to see effective config)  
    `dpc compare --ref test_assets/ref.png --impl test_assets/impl.png --config dpc.toml --process-timeout 50 --format json --verbose`
 
-## Stub commands (UX sanity)
-- Generate code stub: `dpc generate-code --input test_assets/ref.png --format pretty`
-- Quality stub: `dpc quality --input test_assets/ref.png --format json`
+## Codegen + quality quick checks
+- Generate code via mock backend: `DPC_MOCK_CODE="<main>demo</main>" dpc generate-code --input test_assets/ref.png --format pretty --output demo.html`
+- Quality heuristics: `dpc quality --input test_assets/ref.png --format json`
 
 ## Network/browser (Playwright/Node required)
 Prereq: `npm install playwright && npx playwright install chromium`

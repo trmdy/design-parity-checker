@@ -14,6 +14,10 @@ Quick reference for running and interpreting the CI steps, with tips for local d
 - `1`: threshold failed (non-fatal validation)
 - `2`: fatal/config/network errors
 
+## Config defaults
+- Use `--config dpc.toml` to set shared defaults for viewport, threshold, metric weights, and timeouts; CLI flags override.
+- Config is TOML; `viewport` accepts `"WIDTHxHEIGHT"` or `{ width = 1440, height = 900 }`. Invalid config exits with code 2 before running comparisons.
+
 ## Mocking to avoid external deps
 - URL/Figma rendering: set `DPC_MOCK_RENDER_REF` and `DPC_MOCK_RENDER_IMPL` to local PNGs, or `DPC_MOCK_RENDERERS_DIR=/path` containing `ref.png` / `impl.png`.
 - Figma token: real runs need `FIGMA_TOKEN` (or `FIGMA_OAUTH_TOKEN`). Mocks bypass Figma calls.

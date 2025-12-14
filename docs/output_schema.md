@@ -67,7 +67,7 @@ Behavior:
 - JSON mode writes errors to stdout; pretty mode writes pretty JSON to stdout (or to `--output` if specified).
 - Exit codes: `0` success, `1` threshold failure (compare), `2` errors (config/network/runtime).
 
-## GenerateCode payload (stub)
+## GenerateCode payload (codegen)
 
 ```json
 {
@@ -77,12 +77,12 @@ Behavior:
   "viewport": {"width": 1440, "height": 900},
   "stack": "html+tailwind",
   "outputPath": "output.html",
-  "code": null,
-  "summary": {"topIssues": ["generate-code is not implemented yet"]}
+  "code": "<main class=\"mock\">hello</main>",
+  "summary": {"topIssues": ["Using DPC_MOCK_CODE; external codegen not invoked."]}
 }
 ```
 
-## Quality payload (stub)
+## Quality payload (heuristic)
 
 ```json
 {
@@ -90,12 +90,12 @@ Behavior:
   "version": "0.2.0",
   "input": {"kind": "url", "value": "https://example.com"},
   "viewport": {"width": 1440, "height": 900},
-  "score": 0.0,
+  "score": 0.78,
   "findings": [
     {
-      "severity": "info",
-      "type": "not_implemented",
-      "message": "quality mode not implemented yet"
+      "severity": "warning",
+      "type": "hierarchy_missing",
+      "message": "No headings detected (h1-h3); add hierarchy for scannability."
     }
   ]
 }
