@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use dpc_lib::types::{DomNode, MetricScores, ResourceKind, Viewport};
 use dpc_lib::{
-    figma_to_normalized_view, image_to_normalized_view, url_to_normalized_view,
-    CompareArtifacts, DpcError, FigmaAuth, FigmaClient, FigmaRenderOptions,
+    figma_to_normalized_view, generate_top_issues, image_to_normalized_view,
+    url_to_normalized_view, CompareArtifacts, DpcError, FigmaAuth, FigmaClient, FigmaRenderOptions,
     ImageLoadOptions, NormalizedView, ParsedResource, Summary, UrlToViewOptions,
 };
 
@@ -418,150 +418,24 @@ fn write_json_pretty<T: Serialize>(path: &Path, value: &T) -> Result<(), DpcErro
 
 /// Generate summary of metric scores.
 pub fn generate_summary(scores: &MetricScores, similarity: f32, threshold: f32) -> Summary {
-    let mut top_issues = Vec::new();
-
-    // Check each metric and generate human-readable issues
-    if let Some(ref pixel) = scores.pixel {
-        if pixel.score < 0.9 {
-            let diff_pct = ((1.0 - pixel.score) * 100.0).round();
-            top_issues.push(format!(
-                "Pixel differences detected in ~{}% of the image",
-                diff_pct
-            ));
-        }
-        if !pixel.diff_regions.is_empty() {
-            let major_regions = pixel
-                .diff_regions
-                .iter()
-                .filter(|r| matches!(r.severity, dpc_lib::types::DiffSeverity::Major))
-                .count();
-            if major_regions > 0 {
-                top_issues.push(format!(
-                    "{} major visual difference region(s) found",
-                    major_regions
-                ));
-            }
-        }
-    }
-
-    if let Some(ref layout) = scores.layout {
-        if layout.score < 0.9 {
-            let missing = layout
-                .diff_regions
-                .iter()
-                .filter(|r| matches!(r.kind, dpc_lib::types::LayoutDiffKind::MissingElement))
-                .count();
-            let extra = layout
-                .diff_regions
-                .iter()
-                .filter(|r| matches!(r.kind, dpc_lib::types::LayoutDiffKind::ExtraElement))
-                .count();
-            let shifted = layout
-                .diff_regions
-                .iter()
-                .filter(|r| matches!(r.kind, dpc_lib::types::LayoutDiffKind::PositionShift))
-                .count();
-
-            if missing > 0 {
-                top_issues.push(format!(
-                    "{} element(s) missing from implementation",
-                    missing
-                ));
-            }
-            if extra > 0 {
-                top_issues.push(format!("{} extra element(s) in implementation", extra));
-            }
-            if shifted > 0 {
-                top_issues.push(format!(
-                    "{} element(s) shifted from expected position",
-                    shifted
-                ));
-            }
-        }
-    }
-
-    if let Some(ref typo) = scores.typography {
-        if typo.score < 0.9 && !typo.diffs.is_empty() {
-            let font_issues = typo
-                .diffs
-                .iter()
-                .filter(|d| {
-                    d.issues
-                        .iter()
-                        .any(|i| matches!(i, dpc_lib::types::TypographyIssue::FontFamilyMismatch))
-                })
-                .count();
-            let size_issues = typo
-                .diffs
-                .iter()
-                .filter(|d| {
-                    d.issues
-                        .iter()
-                        .any(|i| matches!(i, dpc_lib::types::TypographyIssue::FontSizeDiff))
-                })
-                .count();
-
-            if font_issues > 0 {
-                top_issues.push(format!(
-                    "{} element(s) have mismatched font families",
-                    font_issues
-                ));
-            }
-            if size_issues > 0 {
-                top_issues.push(format!(
-                    "{} element(s) have incorrect font sizes",
-                    size_issues
-                ));
-            }
-        }
-    }
-
-    if let Some(ref color) = scores.color {
-        if color.score < 0.9 && !color.diffs.is_empty() {
-            top_issues.push(format!(
-                "{} color difference(s) detected in palette",
-                color.diffs.len()
-            ));
-        }
-    }
-
-    if let Some(ref content) = scores.content {
-        if content.score < 0.9 {
-            if !content.missing_text.is_empty() {
-                top_issues.push(format!(
-                    "{} text element(s) missing from implementation",
-                    content.missing_text.len()
-                ));
-            }
-            if !content.extra_text.is_empty() {
-                top_issues.push(format!(
-                    "{} extra text element(s) in implementation",
-                    content.extra_text.len()
-                ));
-            }
-        }
-    }
+    const MAX_SUMMARY_ISSUES: usize = 5;
+    let mut top_issues = generate_top_issues(scores, MAX_SUMMARY_ISSUES);
 
     // Add overall status
-    if similarity >= threshold {
-        top_issues.insert(
-            0,
-            format!(
-                "Design parity check passed ({:.1}% similarity, threshold: {:.1}%)",
-                similarity * 100.0,
-                threshold * 100.0
-            ),
-        );
+    let status = if similarity >= threshold {
+        format!(
+            "Design parity check passed ({:.1}% similarity, threshold: {:.1}%)",
+            similarity * 100.0,
+            threshold * 100.0
+        )
     } else {
-        top_issues.insert(
-            0,
-            format!(
-                "Design parity check failed ({:.1}% similarity, threshold: {:.1}%)",
-                similarity * 100.0,
-                threshold * 100.0
-            ),
-        );
-    }
+        format!(
+            "Design parity check failed ({:.1}% similarity, threshold: {:.1}%)",
+            similarity * 100.0,
+            threshold * 100.0
+        )
+    };
+    top_issues.insert(0, status);
 
     Summary { top_issues }
 }
@@ -569,7 +443,11 @@ pub fn generate_summary(scores: &MetricScores, similarity: f32, threshold: f32) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dpc_lib::types::{BoundingBox, DomSnapshot, ResourceKind};
+    use dpc_lib::types::{
+        BoundingBox, ColorDiff, ColorDiffKind, ColorMetric, DomSnapshot, LayoutDiffKind,
+        LayoutDiffRegion, LayoutMetric, MetricScores, ResourceKind, TypographyDiff,
+        TypographyIssue, TypographyMetric,
+    };
     use std::collections::HashMap;
 
     fn make_node(id: &str, tag: &str, class: Option<&str>) -> DomNode {
@@ -653,5 +531,90 @@ mod tests {
         assert!(out_path.exists(), "heatmap file should be created");
         let meta = std::fs::metadata(&out_path).unwrap();
         assert!(meta.len() > 0, "heatmap should not be empty");
+    }
+
+    #[test]
+    fn summary_orders_issues_by_severity_and_priority() {
+        let scores = MetricScores {
+            pixel: None,
+            layout: None,
+            typography: Some(TypographyMetric {
+                score: 0.7,
+                diffs: vec![TypographyDiff {
+                    element_id_ref: Some("caption".into()),
+                    element_id_impl: None,
+                    issues: vec![TypographyIssue::LineHeightDiff],
+                    details: None,
+                }],
+            }),
+            color: Some(ColorMetric {
+                score: 0.6,
+                diffs: vec![ColorDiff {
+                    kind: ColorDiffKind::AccentColorShift,
+                    ref_color: "#111111".into(),
+                    impl_color: "#222222".into(),
+                    delta_e: Some(8.0),
+                }],
+            }),
+            content: None,
+        };
+
+        let summary = generate_summary(&scores, 0.4, 0.8);
+        assert!(
+            summary
+                .top_issues
+                .first()
+                .expect("status issue present")
+                .to_ascii_lowercase()
+                .contains("failed"),
+            "summary should include pass/fail status first"
+        );
+
+        let issues = &summary.top_issues[1..];
+        let color_idx = issues
+            .iter()
+            .position(|i| i.to_ascii_lowercase().contains("color shift"))
+            .expect("color issue present");
+        let typo_idx = issues
+            .iter()
+            .position(|i| i.to_ascii_lowercase().contains("line height"))
+            .expect("typography issue present");
+
+        assert!(
+            color_idx < typo_idx,
+            "palette shifts should outrank minor typography issues"
+        );
+    }
+
+    #[test]
+    fn summary_surfaces_layout_when_impl_empty() {
+        let scores = MetricScores {
+            pixel: None,
+            layout: Some(LayoutMetric {
+                score: 0.0,
+                diff_regions: vec![LayoutDiffRegion {
+                    x: 0.0,
+                    y: 0.0,
+                    width: 1.0,
+                    height: 1.0,
+                    kind: LayoutDiffKind::MissingElement,
+                    element_type: Some("button".into()),
+                    label: None,
+                }],
+            }),
+            typography: None,
+            color: None,
+            content: None,
+        };
+
+        let summary = generate_summary(&scores, 0.0, 0.9);
+
+        assert!(
+            summary
+                .top_issues
+                .iter()
+                .any(|i| i.to_ascii_lowercase().contains("missing")),
+            "layout issues should be surfaced even when implementation has no elements"
+        );
     }
 }

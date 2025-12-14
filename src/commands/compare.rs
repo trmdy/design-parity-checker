@@ -5,8 +5,8 @@ use std::sync::Arc;
 use dpc_lib::output::DPC_OUTPUT_VERSION;
 use dpc_lib::types::ResourceKind;
 use dpc_lib::{
-    calculate_combined_score, default_metrics, parse_resource, run_metrics,
-    CompareOutput, DpcError, DpcOutput, MetricKind, ResourceDescriptor, Viewport,
+    calculate_combined_score, default_metrics, parse_resource, run_metrics, CompareOutput,
+    DpcError, DpcOutput, MetricKind, ResourceDescriptor, Viewport,
 };
 
 use crate::cli::OutputFormat;
@@ -17,8 +17,8 @@ use crate::pipeline::{
     resource_to_normalized_view,
 };
 use crate::settings::{
-    format_effective_config, load_config, resolve_compare_settings, CompareFlagSources,
-    log_effective_config,
+    format_effective_config, load_config, log_effective_config, resolve_compare_settings,
+    CompareFlagSources,
 };
 
 /// Run the compare command.
@@ -95,22 +95,16 @@ pub async fn run_compare(
 
     let ref_res = match parse_resource(&r#ref, ref_type.map(resource_kind_from_cli)) {
         Ok(res) => res,
-        Err(err) => {
-            return render_error(DpcError::Config(err.to_string()), format, output.clone())
-        }
+        Err(err) => return render_error(DpcError::Config(err.to_string()), format, output.clone()),
     };
     let impl_res = match parse_resource(&r#impl, impl_type.map(resource_kind_from_cli)) {
         Ok(res) => res,
-        Err(err) => {
-            return render_error(DpcError::Config(err.to_string()), format, output.clone())
-        }
+        Err(err) => return render_error(DpcError::Config(err.to_string()), format, output.clone()),
     };
 
     let selected_metrics = match parse_metric_kinds(metrics.as_deref()) {
         Ok(k) => k,
-        Err(err) => {
-            return render_error(DpcError::Config(err.to_string()), format, output.clone())
-        }
+        Err(err) => return render_error(DpcError::Config(err.to_string()), format, output.clone()),
     };
     let ignore_selectors = parse_ignore_selectors(ignore_selectors.as_deref());
     let ignore_regions = match ignore_regions {
@@ -238,66 +232,78 @@ pub async fn run_compare(
     // Generate summary
     let summary = generate_summary(&metrics_scores, similarity, threshold as f32);
 
-    let artifacts = if should_keep_artifacts {
-        match persist_compare_artifacts(
-            &artifacts_dir,
-            &ref_view,
-            &impl_view,
-            should_keep_artifacts,
-        ) {
-            Ok(paths) => Some(paths),
-            Err(err) => return render_error(err, format, output.clone()),
-        }
-    } else {
-        None
+    let artifacts = match persist_compare_artifacts(
+        &artifacts_dir,
+        &ref_view,
+        &impl_view,
+        should_keep_artifacts,
+    ) {
+        Ok(paths) => Some(paths),
+        Err(err) => return render_error(err, format, output.clone()),
     };
 
-    if should_keep_artifacts {
-        eprintln!("Artifacts saved to: {}", artifacts_dir.display());
-    }
-
-    if verbose {
-        if let Some(paths) = &artifacts {
+    if let Some(paths) = &artifacts {
+        let should_log = matches!(format, OutputFormat::Json | OutputFormat::Pretty)
+            || verbose
+            || paths.kept
+            || artifacts_from_cli;
+        if should_log {
             eprintln!(
-                "Artifacts directory: {} (kept: {})",
+                "Artifacts directory: {} (kept: {}; use --keep-artifacts or --artifacts-dir to retain)",
                 paths.directory.display(),
                 paths.kept
             );
-            if let Some(path) = &paths.ref_screenshot {
-                eprintln!("  ref screenshot: {}", path.display());
-            }
-            if let Some(path) = &paths.impl_screenshot {
-                eprintln!("  impl screenshot: {}", path.display());
-            }
-            if let Some(path) = &paths.ref_dom_snapshot {
-                eprintln!("  ref DOM: {}", path.display());
-            }
-            if let Some(path) = &paths.impl_dom_snapshot {
-                eprintln!("  impl DOM: {}", path.display());
-            }
-            if let Some(path) = &paths.ref_figma_snapshot {
-                eprintln!("  ref figma tree: {}", path.display());
-            }
-            if let Some(path) = &paths.impl_figma_snapshot {
-                eprintln!("  impl figma tree: {}", path.display());
-            }
-            if paths.diff_image.is_some() {
+            if verbose {
+                if let Some(path) = &paths.ref_screenshot {
+                    eprintln!("  ref screenshot: {}", path.display());
+                }
+                if let Some(path) = &paths.impl_screenshot {
+                    eprintln!("  impl screenshot: {}", path.display());
+                }
+                if let Some(path) = &paths.ref_dom_snapshot {
+                    eprintln!("  ref DOM: {}", path.display());
+                }
+                if let Some(path) = &paths.impl_dom_snapshot {
+                    eprintln!("  impl DOM: {}", path.display());
+                }
+                if let Some(path) = &paths.ref_figma_snapshot {
+                    eprintln!("  ref figma tree: {}", path.display());
+                }
+                if let Some(path) = &paths.impl_figma_snapshot {
+                    eprintln!("  impl figma tree: {}", path.display());
+                }
                 if let Some(path) = &paths.diff_image {
                     eprintln!("  pixel diff: {}", path.display());
+                } else {
+                    eprintln!("  pixel diff: not generated");
                 }
-            } else {
-                eprintln!("  pixel diff: not generated");
+                if paths.diff_image.is_some()
+                    || paths.ref_dom_snapshot.is_some()
+                    || paths.impl_dom_snapshot.is_some()
+                    || paths.ref_figma_snapshot.is_some()
+                    || paths.impl_figma_snapshot.is_some()
+                {
+                    eprintln!(
+                        "Hint: open diff_heatmap.png and DOM/Figma snapshots under {}",
+                        paths.directory.display()
+                    );
+                }
+                if !paths.kept {
+                    eprintln!(
+                        "Artifacts will be cleaned up; pass --keep-artifacts or --artifacts-dir to retain."
+                    );
+                }
+            } else if paths.kept {
+                if paths.diff_image.is_some()
+                    || paths.ref_dom_snapshot.is_some()
+                    || paths.impl_dom_snapshot.is_some()
+                {
+                    eprintln!(
+                        "Hint: view diff heatmap or DOM snapshots in {}",
+                        paths.directory.display()
+                    );
+                }
             }
-            if !paths.kept {
-                eprintln!(
-                    "Artifacts will be cleaned up; pass --keep-artifacts or --artifacts-dir to retain."
-                );
-            }
-        } else {
-            eprintln!(
-                "Artifacts directory: {} (will be cleaned up; use --keep-artifacts or --artifacts-dir to retain)",
-                artifacts_dir.display()
-            );
         }
     }
 
