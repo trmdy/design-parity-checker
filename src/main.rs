@@ -17,9 +17,9 @@ use dpc_lib::NormalizedView;
 use dpc_lib::{
     calculate_combined_score, default_metrics, figma_to_normalized_view, image_to_normalized_view,
     parse_resource, run_metrics, url_to_normalized_view, CompareArtifacts, CompareOutput, DpcError,
-    DpcOutput, ErrorOutput, FigmaClient, FigmaRenderOptions, FindingSeverity, GenerateCodeOutput,
-    ImageLoadOptions, MetricKind, ParsedResource, QualityFinding, QualityOutput,
-    ResourceDescriptor, ScoreWeights, Summary, UrlToViewOptions, Viewport,
+    DpcOutput, ErrorOutput, FigmaAuth, FigmaClient, FigmaRenderOptions, FindingSeverity,
+    GenerateCodeOutput, ImageLoadOptions, MetricKind, ParsedResource, QualityFinding,
+    QualityOutput, ResourceDescriptor, ScoreWeights, Summary, UrlToViewOptions, Viewport,
 };
 use image::{self, imageops::FilterType, GenericImageView, RgbaImage};
 use serde::{Deserialize, Serialize};
@@ -449,11 +449,13 @@ async fn resource_to_normalized_view(
                 .node_id
                 .clone()
                 .ok_or_else(|| DpcError::Config("Figma node-id is required".to_string()))?;
-            let token = std::env::var("FIGMA_TOKEN").map_err(|_| {
-                DpcError::Config("FIGMA_TOKEN environment variable is required".to_string())
+            let auth = FigmaAuth::from_env().ok_or_else(|| {
+                DpcError::Config(
+                    "Figma token missing; set FIGMA_TOKEN or FIGMA_OAUTH_TOKEN".to_string(),
+                )
             })?;
-            let client =
-                FigmaClient::new(token).map_err(|e| format!("Figma client error: {}", e))?;
+            let client = FigmaClient::from_auth(auth)
+                .map_err(|e| format!("Figma client error: {}", e))?;
             let output_path = artifacts_dir.join(format!("{}_figma.png", prefix));
             let options = FigmaRenderOptions {
                 file_key: figma_info.file_key.clone(),
@@ -1003,7 +1005,18 @@ fn write_json_output(body: &DpcOutput, output: Option<&Path>) -> Result<(), Box<
 }
 
 fn write_pretty_output(body: &DpcOutput, output: Option<&Path>) -> io::Result<()> {
-    let content = format_pretty_plain(body);
+    let stdout_is_tty = std::io::stdout().is_terminal();
+    let use_human = output.is_none() && stdout_is_tty;
+
+    if use_human {
+        let content = format_pretty(body, true);
+        println!("{content}");
+        return Ok(());
+    }
+
+    // Non-tty or file output: keep JSON shape for pipelines/files.
+    let content =
+        serde_json::to_string_pretty(body).unwrap_or_else(|_| "{\"mode\":\"error\"}".to_string());
     if let Some(path) = output {
         std::fs::write(path, &content)?;
     } else {
@@ -1151,11 +1164,6 @@ fn color(text: &str, code: &str, colorize: bool) -> String {
         text.to_string()
     }
 }
-
-fn format_pretty_plain(body: &DpcOutput) -> String {
-    serde_json::to_string(body).unwrap_or_else(|_| "{\"mode\":\"error\"}".to_string())
-}
-
 fn exit_code_for_compare(passed: bool) -> ExitCode {
     if passed {
         ExitCode::SUCCESS
