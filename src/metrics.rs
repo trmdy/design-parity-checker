@@ -131,82 +131,8 @@ impl MetricResult {
     }
 }
 
-// Implement Metric trait for each metric type
-
-impl Metric for PixelSimilarity {
-    fn kind(&self) -> MetricKind {
-        MetricKind::Pixel
-    }
-
-    fn compute(
-        &self,
-        reference: &NormalizedView,
-        implementation: &NormalizedView,
-    ) -> Result<MetricResult> {
-        let metric = PixelSimilarity::compute_metric(self, reference, implementation)?;
-        Ok(MetricResult::Pixel(metric))
-    }
-}
-
-impl Metric for LayoutSimilarity {
-    fn kind(&self) -> MetricKind {
-        MetricKind::Layout
-    }
-
-    fn compute(
-        &self,
-        reference: &NormalizedView,
-        implementation: &NormalizedView,
-    ) -> Result<MetricResult> {
-        let metric = LayoutSimilarity::compute_metric(self, reference, implementation)?;
-        Ok(MetricResult::Layout(metric))
-    }
-}
-
-impl Metric for TypographySimilarity {
-    fn kind(&self) -> MetricKind {
-        MetricKind::Typography
-    }
-
-    fn compute(
-        &self,
-        reference: &NormalizedView,
-        implementation: &NormalizedView,
-    ) -> Result<MetricResult> {
-        let metric = TypographySimilarity::compute_metric(self, reference, implementation)?;
-        Ok(MetricResult::Typography(metric))
-    }
-}
-
-impl Metric for ColorPaletteMetric {
-    fn kind(&self) -> MetricKind {
-        MetricKind::Color
-    }
-
-    fn compute(
-        &self,
-        reference: &NormalizedView,
-        implementation: &NormalizedView,
-    ) -> Result<MetricResult> {
-        let metric = ColorPaletteMetric::compute_metric(self, reference, implementation)?;
-        Ok(MetricResult::Color(metric))
-    }
-}
-
-impl Metric for ContentSimilarity {
-    fn kind(&self) -> MetricKind {
-        MetricKind::Content
-    }
-
-    fn compute(
-        &self,
-        reference: &NormalizedView,
-        implementation: &NormalizedView,
-    ) -> Result<MetricResult> {
-        let metric = ContentSimilarity::compute_metric(self, reference, implementation)?;
-        Ok(MetricResult::Content(metric))
-    }
-}
+// Note: Metric trait implementations are in the respective submodules
+// (pixel.rs, layout.rs, typography.rs, color.rs, content.rs)
 
 /// Returns the default set of all metrics.
 pub fn default_metrics() -> Vec<Box<dyn Metric>> {

@@ -2,6 +2,8 @@ use crate::error::DpcError;
 use crate::types::{BoundingBox, LayoutDiffKind, LayoutDiffRegion, LayoutMetric, NormalizedView};
 use crate::Result;
 
+use super::{Metric, MetricKind, MetricResult};
+
 #[derive(Debug, Clone, Copy)]
 pub struct LayoutSimilarity {
     pub iou_threshold: f32,
@@ -276,4 +278,19 @@ fn best_match(
     }
 
     best.filter(|(_, score)| *score >= iou_threshold)
+}
+
+impl Metric for LayoutSimilarity {
+    fn kind(&self) -> MetricKind {
+        MetricKind::Layout
+    }
+
+    fn compute(
+        &self,
+        reference: &NormalizedView,
+        implementation: &NormalizedView,
+    ) -> Result<MetricResult> {
+        let metric = self.compute_metric(reference, implementation)?;
+        Ok(MetricResult::Layout(metric))
+    }
 }

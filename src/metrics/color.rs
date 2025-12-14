@@ -4,6 +4,8 @@ use crate::Result;
 use image::{DynamicImage, GenericImageView};
 use palette::{convert::FromColorUnclamped, Lab, Srgb};
 
+use super::{Metric, MetricKind, MetricResult};
+
 #[derive(Debug, Clone, Copy)]
 pub struct ColorPaletteMetric {
     pub clusters: usize,
@@ -243,4 +245,19 @@ fn lab_distance2(a: Lab, b: Lab) -> f32 {
     let da = a.a - b.a;
     let db = a.b - b.b;
     dl * dl + da * da + db * db
+}
+
+impl Metric for ColorPaletteMetric {
+    fn kind(&self) -> MetricKind {
+        MetricKind::Color
+    }
+
+    fn compute(
+        &self,
+        reference: &NormalizedView,
+        implementation: &NormalizedView,
+    ) -> Result<MetricResult> {
+        let metric = self.compute_metric(reference, implementation)?;
+        Ok(MetricResult::Color(metric))
+    }
 }

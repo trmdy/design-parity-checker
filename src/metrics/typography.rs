@@ -3,6 +3,8 @@ use crate::types::{NormalizedView, TypographyDiff, TypographyIssue, TypographyMe
 use crate::Result;
 use std::collections::HashMap;
 
+use super::{Metric, MetricKind, MetricResult};
+
 #[derive(Debug, Clone, Copy)]
 pub struct TypographySimilarity {
     pub size_tolerance: f32,
@@ -277,5 +279,21 @@ fn font_weight_category(weight: Option<&str>) -> Option<u16> {
         "extrabold" | "ultrabold" => Some(800),
         "black" | "heavy" => Some(900),
         _ => None,
+    }
+}
+
+
+impl Metric for TypographySimilarity {
+    fn kind(&self) -> MetricKind {
+        MetricKind::Typography
+    }
+
+    fn compute(
+        &self,
+        reference: &NormalizedView,
+        implementation: &NormalizedView,
+    ) -> Result<MetricResult> {
+        let metric = self.compute_metric(reference, implementation)?;
+        Ok(MetricResult::Typography(metric))
     }
 }

@@ -2,6 +2,8 @@ use crate::types::{ContentMetric, NormalizedView};
 use crate::Result;
 use std::collections::HashSet;
 
+use super::{Metric, MetricKind, MetricResult};
+
 #[derive(Debug, Clone, Copy)]
 pub struct ContentSimilarity {
     pub match_threshold: f32,
@@ -187,5 +189,20 @@ fn token_similarity(a: &str, b: &str) -> f32 {
         0.0
     } else {
         (2.0 * intersection) / denom
+    }
+}
+
+impl Metric for ContentSimilarity {
+    fn kind(&self) -> MetricKind {
+        MetricKind::Content
+    }
+
+    fn compute(
+        &self,
+        reference: &NormalizedView,
+        implementation: &NormalizedView,
+    ) -> Result<MetricResult> {
+        let metric = self.compute_metric(reference, implementation)?;
+        Ok(MetricResult::Content(metric))
     }
 }

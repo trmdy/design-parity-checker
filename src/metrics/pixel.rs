@@ -6,6 +6,8 @@ use crate::types::{
 use crate::Result;
 use image::{DynamicImage, GenericImageView};
 
+use super::{Metric, MetricKind, MetricResult};
+
 #[derive(Debug, Clone, Copy)]
 pub struct PixelDiffThresholds {
     pub minor: f32,
@@ -190,4 +192,19 @@ pub fn cluster_diff_regions(
     }
 
     regions
+}
+
+impl Metric for PixelSimilarity {
+    fn kind(&self) -> MetricKind {
+        MetricKind::Pixel
+    }
+
+    fn compute(
+        &self,
+        reference: &NormalizedView,
+        implementation: &NormalizedView,
+    ) -> Result<MetricResult> {
+        let metric = self.compute_metric(reference, implementation)?;
+        Ok(MetricResult::Pixel(metric))
+    }
 }
