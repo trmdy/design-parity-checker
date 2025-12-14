@@ -77,6 +77,24 @@ pub fn generate_top_issues(scores: &MetricScores, max_issues: usize) -> Vec<Stri
 fn issues_from_pixel(metric: &PixelMetric) -> Vec<RankedIssue> {
     let mut issues = Vec::new();
 
+    // If semantic diffs are available, use those instead of generic pixel region counts
+    if let Some(ref semantic_diffs) = metric.semantic_diffs {
+        if !semantic_diffs.is_empty() {
+            for diff in semantic_diffs {
+                let ranked = match diff.severity {
+                    DiffSeverity::Major => RankedIssue::major(PRIORITY_PIXEL, &diff.description),
+                    DiffSeverity::Moderate => {
+                        RankedIssue::moderate(PRIORITY_PIXEL, &diff.description)
+                    }
+                    DiffSeverity::Minor => RankedIssue::minor(PRIORITY_PIXEL, &diff.description),
+                };
+                issues.push(ranked);
+            }
+            return issues;
+        }
+    }
+
+    // Fallback to generic pixel region counts if no semantic diffs
     let major_count = metric
         .diff_regions
         .iter()
