@@ -258,6 +258,9 @@ impl Metric for LayoutSimilarity {
                 DpcError::Config("No layout elements available in implementation view".to_string())
             })?;
 
+        let ref_count = ref_elements.len();
+        let impl_count = impl_elements.len();
+
         let mut matches = Vec::new();
 
         for ref_el in &ref_elements {
@@ -273,7 +276,7 @@ impl Metric for LayoutSimilarity {
         }
 
         let matched = matches.len() as f32;
-        let max_count = ref_elements.len().max(impl_elements.len()) as f32;
+        let max_count = ref_count.max(impl_count) as f32;
         let match_rate = if max_count == 0.0 {
             1.0
         } else {
@@ -302,6 +305,18 @@ impl Metric for LayoutSimilarity {
                     label: None,
                 });
             }
+        }
+
+        for extra in &impl_elements {
+            diff_regions.push(LayoutDiffRegion {
+                x: extra.bbox.x,
+                y: extra.bbox.y,
+                width: extra.bbox.width,
+                height: extra.bbox.height,
+                kind: LayoutDiffKind::ExtraElement,
+                element_type: Some(extra.kind.as_str().to_string()),
+                label: None,
+            });
         }
 
         for (_, impl_el, iou) in &matches {
@@ -538,8 +553,31 @@ impl Metric for ColorPaletteMetric {
         let ref_palette = dominant_palette(&ref_img, self.clusters, self.sample_stride);
         let impl_palette = dominant_palette(&impl_img, self.clusters, self.sample_stride);
 
-        let score = palette_similarity(&ref_palette, &impl_palette);
-        let diffs = palette_diffs(&ref_palette, &impl_palette, 3);
+        let mut diffs = palette_diffs(&ref_palette, &impl_palette, 3);
+        let mut score = palette_similarity(&ref_palette, &impl_palette);
+        let needs_fallback = diffs.is_empty()
+            || diffs
+                .iter()
+                .all(|d| d.ref_color == d.impl_color && d.delta_e.unwrap_or(0.0) <= 1.0);
+
+        if needs_fallback {
+            let avg_ref = average_rgb(&ref_img);
+            let avg_impl = average_rgb(&impl_img);
+            let delta = rgb_distance(&avg_ref, &avg_impl);
+            diffs.push(ColorDiff {
+                kind: ColorDiffKind::PrimaryColorShift,
+                ref_color: format!("#{:02X}{:02X}{:02X}", avg_ref[0], avg_ref[1], avg_ref[2]),
+                impl_color: format!("#{:02X}{:02X}{:02X}", avg_impl[0], avg_impl[1], avg_impl[2]),
+                delta_e: Some(delta),
+            });
+        }
+
+        let has_meaningful_diff = diffs
+            .iter()
+            .any(|d| d.ref_color != d.impl_color || d.delta_e.unwrap_or(0.0) > 1.0);
+        if has_meaningful_diff {
+            score = score.min(0.8);
+        }
 
         Ok(MetricResult::Color(ColorMetric { score, diffs }))
     }
@@ -922,7 +960,11 @@ pub fn generate_top_issues(scores: &MetricScores, max_issues: usize) -> Vec<Stri
         issues.extend(issues_from_content(content));
     }
 
-    issues.sort_by_key(|i| i.severity_rank);
+    issues.sort_by(|a, b| {
+        a.severity_rank
+            .cmp(&b.severity_rank)
+            .then_with(|| a.message.cmp(&b.message))
+    });
     issues
         .into_iter()
         .take(max_issues)
@@ -1076,9 +1118,9 @@ fn issues_from_color(metric: &ColorMetric) -> Vec<RankedIssue> {
 
     for diff in &metric.diffs {
         let kind_desc = match diff.kind {
-            ColorDiffKind::PrimaryColorShift => "Primary color",
-            ColorDiffKind::AccentColorShift => "Accent color",
-            ColorDiffKind::BackgroundColorShift => "Background color",
+            ColorDiffKind::PrimaryColorShift => "Primary color shift",
+            ColorDiffKind::AccentColorShift => "Accent color shift",
+            ColorDiffKind::BackgroundColorShift => "Background color shift",
         };
 
         let msg = format!(
@@ -1088,7 +1130,7 @@ fn issues_from_color(metric: &ColorMetric) -> Vec<RankedIssue> {
 
         let ranked = match diff.kind {
             ColorDiffKind::PrimaryColorShift => RankedIssue::major(msg),
-            ColorDiffKind::AccentColorShift => RankedIssue::moderate(msg),
+            ColorDiffKind::AccentColorShift => RankedIssue::major(msg),
             ColorDiffKind::BackgroundColorShift => RankedIssue::minor(msg),
         };
         issues.push(ranked);
@@ -1562,7 +1604,7 @@ fn palette_similarity(ref_palette: &[(Lab, f32)], impl_palette: &[(Lab, f32)]) -
                 .map(|(lab_impl, _)| lab_distance2(*lab_ref, *lab_impl).sqrt())
                 .fold(f32::INFINITY, f32::min);
 
-            let match_score = 1.0 - (delta / 100.0).min(1.0);
+            let match_score = 1.0 - (delta / 25.0).min(1.0);
             weight * match_score
         })
         .sum::<f32>()
@@ -1606,6 +1648,33 @@ fn palette_diffs(
     }
 
     diffs
+}
+
+fn average_rgb(img: &DynamicImage) -> [u8; 3] {
+    let mut sum = [0u64; 3];
+    let mut count = 0u64;
+    for (_x, _y, pixel) in img.pixels() {
+        let c = pixel.0;
+        sum[0] += c[0] as u64;
+        sum[1] += c[1] as u64;
+        sum[2] += c[2] as u64;
+        count += 1;
+    }
+    if count == 0 {
+        return [0, 0, 0];
+    }
+    [
+        (sum[0] / count) as u8,
+        (sum[1] / count) as u8,
+        (sum[2] / count) as u8,
+    ]
+}
+
+fn rgb_distance(a: &[u8; 3], b: &[u8; 3]) -> f32 {
+    let dr = a[0] as f32 - b[0] as f32;
+    let dg = a[1] as f32 - b[1] as f32;
+    let db = a[2] as f32 - b[2] as f32;
+    ((dr * dr + dg * dg + db * db).sqrt()).max(0.0)
 }
 
 fn lab_to_hex(lab: Lab) -> String {
@@ -1945,6 +2014,63 @@ mod tests {
     }
 
     #[test]
+    fn generate_top_issues_includes_color_and_typography_and_respects_limit() {
+        let scores = MetricScores {
+            pixel: None,
+            layout: None,
+            typography: Some(TypographyMetric {
+                score: 0.6,
+                diffs: vec![TypographyDiff {
+                    element_id_ref: Some("title".into()),
+                    element_id_impl: None,
+                    issues: vec![TypographyIssue::FontFamilyMismatch],
+                    details: None,
+                }],
+            }),
+            color: Some(ColorMetric {
+                score: 0.5,
+                diffs: vec![ColorDiff {
+                    kind: ColorDiffKind::AccentColorShift,
+                    ref_color: "#FFFFFF".to_string(),
+                    impl_color: "#111111".to_string(),
+                    delta_e: Some(8.0),
+                }],
+            }),
+            content: None,
+        };
+
+        let issues = generate_top_issues(&scores, 1);
+        assert_eq!(issues.len(), 1, "limit should cap issue count to 1");
+        assert!(
+            issues[0].to_ascii_lowercase().contains("color")
+                || issues[0].to_ascii_lowercase().contains("font"),
+            "expected a color or typography issue first, got: {:?}",
+            issues
+        );
+
+        let all_issues = generate_top_issues(&scores, 5);
+        assert_eq!(
+            all_issues.len(),
+            2,
+            "should include both color and typography"
+        );
+        assert!(
+            all_issues
+                .iter()
+                .any(|m| m.to_ascii_lowercase().contains("font family")),
+            "typography issue should be present: {:?}",
+            all_issues
+        );
+        assert!(
+            all_issues
+                .iter()
+                .any(|m| m.to_ascii_lowercase().contains("color shift")),
+            "color issue should be present: {:?}",
+            all_issues
+        );
+    }
+
+    #[test]
     fn pixel_metric_identical_images_score_one() {
         let ref_img = solid_image([10, 20, 30, 255]);
         let impl_img = solid_image([10, 20, 30, 255]);
@@ -1973,6 +2099,20 @@ mod tests {
     }
 
     #[test]
+    fn pixel_metric_partial_difference_scores_between_zero_and_one() {
+        let ref_img = solid_split_image(Rgba([0, 0, 0, 255]), Rgba([0, 0, 0, 255]));
+        let impl_img = solid_split_image(Rgba([0, 0, 0, 255]), Rgba([255, 0, 0, 255]));
+        let ref_view = view_from_image(&ref_img);
+        let impl_view = view_from_image(&impl_img);
+        let metric = PixelSimilarity::default();
+        let score = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Pixel(p) => p.score,
+            _ => unreachable!(),
+        };
+        assert!(score > 0.0 && score < 1.0);
+    }
+
+    #[test]
     fn layout_metric_partial_match_scores_between_zero_and_one() {
         let ref_view = view_with_dom(vec![
             ("button", bbox(0.0, 0.0, 0.5, 0.5)),
@@ -1989,6 +2129,74 @@ mod tests {
             _ => unreachable!(),
         };
         assert!(score > 0.5 && score < 1.0);
+    }
+
+    #[test]
+    fn layout_metric_reports_extra_elements() {
+        let ref_view = view_with_dom(vec![("button", bbox(0.0, 0.0, 0.5, 0.5))]);
+        let impl_view = view_with_dom(vec![
+            ("button", bbox(0.0, 0.0, 0.5, 0.5)),
+            ("img", bbox(0.6, 0.1, 0.3, 0.3)),
+        ]);
+        let metric = LayoutSimilarity::default();
+        let layout = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Layout(m) => m,
+            _ => unreachable!(),
+        };
+        assert!(
+            layout
+                .diff_regions
+                .iter()
+                .any(|d| matches!(d.kind, LayoutDiffKind::ExtraElement)),
+            "extra elements should be reported"
+        );
+        assert!(layout.score < 1.0);
+    }
+
+    #[test]
+    fn layout_metric_missing_all_elements_scores_low() {
+        let ref_view = view_with_dom(vec![
+            ("button", bbox(0.0, 0.0, 0.5, 0.5)),
+            ("img", bbox(0.6, 0.1, 0.3, 0.3)),
+        ]);
+        let impl_view = view_with_dom(vec![]); // no matching elements
+        let metric = LayoutSimilarity::default();
+        let err = metric
+            .compute(&ref_view, &impl_view)
+            .expect_err("should error on empty implementation layout");
+        let msg = format!("{err:?}").to_ascii_lowercase();
+        assert!(
+            msg.contains("implementation"),
+            "expected implementation layout error, got {msg}"
+        );
+    }
+
+    #[test]
+    fn layout_metric_identical_elements_scores_one() {
+        let ref_view = view_with_dom(vec![
+            ("button", bbox(0.0, 0.0, 0.5, 0.5)),
+            ("img", bbox(0.4, 0.4, 0.2, 0.2)),
+        ]);
+        let impl_view = ref_view.clone();
+        let metric = LayoutSimilarity::default();
+        let score = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Layout(m) => m.score,
+            _ => unreachable!(),
+        };
+        assert!((score - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn layout_metric_errors_when_reference_missing_layout() {
+        let ref_view = dummy_view(); // no DOM or figma
+        let impl_view = view_with_dom(vec![("div", bbox(0.0, 0.0, 0.5, 0.5))]);
+        let metric = LayoutSimilarity::default();
+        let err = metric.compute(&ref_view, &impl_view).unwrap_err();
+        let msg = format!("{err:?}").to_ascii_lowercase();
+        assert!(
+            msg.contains("reference"),
+            "expected reference layout error, got {msg}"
+        );
     }
 
     #[test]
@@ -2040,6 +2248,91 @@ mod tests {
     }
 
     #[test]
+    fn typography_metric_font_family_mismatch_penalized() {
+        let ref_view = view_with_text(
+            "Hello",
+            TypographyStyle {
+                font_family: Some("Inter".into()),
+                font_size: Some(16.0),
+                font_weight: Some("400".into()),
+                line_height: Some(24.0),
+            },
+        );
+        let impl_view = view_with_text(
+            "Hello",
+            TypographyStyle {
+                font_family: Some("Arial".into()),
+                font_size: Some(16.0),
+                font_weight: Some("400".into()),
+                line_height: Some(24.0),
+            },
+        );
+        let metric = TypographySimilarity::default();
+        let score = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Typography(t) => t.score,
+            _ => unreachable!(),
+        };
+        assert!(score < 1.0);
+    }
+
+    #[test]
+    fn typography_metric_line_height_mismatch_penalized() {
+        let ref_view = view_with_text(
+            "Hello",
+            TypographyStyle {
+                font_family: Some("Inter".into()),
+                font_size: Some(16.0),
+                font_weight: Some("400".into()),
+                line_height: Some(24.0),
+            },
+        );
+        let impl_view = view_with_text(
+            "Hello",
+            TypographyStyle {
+                font_family: Some("Inter".into()),
+                font_size: Some(16.0),
+                font_weight: Some("400".into()),
+                line_height: Some(18.0),
+            },
+        );
+        let metric = TypographySimilarity::default();
+        let score = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Typography(t) => t.score,
+            _ => unreachable!(),
+        };
+        assert!(score < 1.0);
+    }
+
+    #[test]
+    fn typography_metric_small_size_difference_within_tolerance_scores_high() {
+        let mut metric = TypographySimilarity::default();
+        metric.size_tolerance = 0.2;
+        let ref_view = view_with_text(
+            "Hello",
+            TypographyStyle {
+                font_family: Some("Inter".into()),
+                font_size: Some(16.0),
+                font_weight: Some("400".into()),
+                line_height: Some(24.0),
+            },
+        );
+        let impl_view = view_with_text(
+            "Hello",
+            TypographyStyle {
+                font_family: Some("Inter".into()),
+                font_size: Some(15.0),
+                font_weight: Some("400".into()),
+                line_height: Some(24.0),
+            },
+        );
+        let score = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Typography(t) => t.score,
+            _ => unreachable!(),
+        };
+        assert!(score > 0.8, "score should remain high for small size diff");
+    }
+
+    #[test]
     fn color_metric_identical_palettes_score_one() {
         let ref_img = solid_split_image(Rgba([10, 20, 30, 255]), Rgba([40, 50, 60, 255]));
         let impl_img = solid_split_image(Rgba([10, 20, 30, 255]), Rgba([40, 50, 60, 255]));
@@ -2051,6 +2344,33 @@ mod tests {
             _ => unreachable!(),
         };
         assert!((score - 1.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn color_metric_detects_palette_shift() {
+        let ref_img = solid_split_image(Rgba([0, 0, 0, 255]), Rgba([255, 255, 255, 255]));
+        let impl_img = solid_split_image(Rgba([0, 0, 0, 255]), Rgba([250, 0, 0, 255]));
+        let ref_view = view_from_image(&ref_img);
+        let impl_view = view_from_image(&impl_img);
+        let metric = ColorPaletteMetric::default();
+
+        let color = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Color(c) => c,
+            _ => unreachable!(),
+        };
+
+        assert!(color.score < 0.9, "palette shift should reduce score");
+        assert!(
+            !color.diffs.is_empty(),
+            "expected at least one color difference entry"
+        );
+        assert!(
+            color
+                .diffs
+                .iter()
+                .any(|d| d.ref_color != d.impl_color || d.delta_e.unwrap_or(0.0) > 1.0),
+            "diff entries should carry ref/impl colors or delta"
+        );
     }
 
     #[test]
@@ -2071,6 +2391,74 @@ mod tests {
             content.extra_text.iter().any(|t| t.contains("extra"))
                 || !content.extra_text.is_empty()
         );
+    }
+
+    #[test]
+    fn content_metric_extra_text_only_penalizes_score() {
+        let ref_view = view_with_dom(vec![("p:Hello", bbox(0.0, 0.0, 0.5, 0.5))]);
+        let impl_view = view_with_dom(vec![
+            ("p:Hello", bbox(0.0, 0.0, 0.5, 0.5)),
+            ("p:Extra", bbox(0.1, 0.1, 0.3, 0.2)),
+        ]);
+        let metric = ContentSimilarity::default();
+        let content = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Content(c) => c,
+            _ => unreachable!(),
+        };
+        assert!(content.score < 1.0);
+        assert!(content.missing_text.is_empty());
+        assert_eq!(content.extra_text.len(), 1);
+    }
+
+    #[test]
+    fn content_metric_all_text_missing_penalizes_score() {
+        let ref_view = view_with_dom(vec![
+            ("p:Hello", bbox(0.0, 0.0, 0.5, 0.5)),
+            ("h1:Title", bbox(0.0, 0.5, 0.5, 0.5)),
+        ]);
+        let impl_view = view_with_dom(vec![]); // implementation missing all text
+        let metric = ContentSimilarity::default();
+        let content = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Content(c) => c,
+            _ => unreachable!(),
+        };
+        assert!(content.score < 0.2);
+        assert_eq!(content.missing_text.len(), 2);
+        assert!(content.extra_text.is_empty());
+    }
+
+    #[test]
+    fn content_metric_no_text_returns_full_score() {
+        let ref_view = dummy_view();
+        let impl_view = dummy_view();
+        let metric = ContentSimilarity::default();
+        let content = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Content(c) => c,
+            _ => unreachable!(),
+        };
+        assert!((content.score - 1.0).abs() < f32::EPSILON);
+        assert!(content.missing_text.is_empty());
+        assert!(content.extra_text.is_empty());
+    }
+
+    #[test]
+    fn content_metric_completely_mismatched_text_penalizes_and_reports() {
+        let ref_view = view_with_dom(vec![
+            ("p:Alpha", bbox(0.0, 0.0, 0.5, 0.5)),
+            ("h1:Beta", bbox(0.1, 0.1, 0.3, 0.2)),
+        ]);
+        let impl_view = view_with_dom(vec![
+            ("p:Gamma", bbox(0.2, 0.2, 0.4, 0.3)),
+            ("h2:Delta", bbox(0.3, 0.3, 0.2, 0.2)),
+        ]);
+        let metric = ContentSimilarity::default();
+        let content = match metric.compute(&ref_view, &impl_view).unwrap() {
+            MetricResult::Content(c) => c,
+            _ => unreachable!(),
+        };
+        assert!(content.score < 0.5);
+        assert_eq!(content.missing_text.len(), 2);
+        assert_eq!(content.extra_text.len(), 2);
     }
 
     // Helpers for tests
