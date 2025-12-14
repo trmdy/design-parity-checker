@@ -401,12 +401,21 @@ fn map_playwright_error(status_text: impl Into<String>, stderr: &str) -> DpcErro
         return map_playwright_status_error(&error.status, error.message);
     }
 
+    let lower = stderr.to_ascii_lowercase();
+
     if stderr
         .to_ascii_lowercase()
         .contains("cannot find module 'playwright'")
     {
         return DpcError::Config(
             "Playwright npm package is missing; install with `npm install playwright`.".to_string(),
+        );
+    }
+
+    if lower.contains("timeout") {
+        return DpcError::Config(
+            "Playwright timed out; try increasing --nav-timeout/--network-idle-timeout or --process-timeout, and ensure the page finishes loading."
+                .to_string(),
         );
     }
 
@@ -425,6 +434,11 @@ fn map_playwright_status_error(status: &str, message: String) -> DpcError {
         DpcError::Config(
             "Playwright npm package is missing; install with `npm install playwright`.".to_string(),
         )
+    } else if message.to_ascii_lowercase().contains("timeout") {
+        DpcError::Config(format!(
+            "Playwright error (status {}): {}. Hint: increase --nav-timeout/--network-idle-timeout or --process-timeout, and ensure the page finishes loading.",
+            status, message
+        ))
     } else {
         DpcError::Config(format!("Playwright error (status {}): {}", status, message))
     }
@@ -1033,6 +1047,38 @@ mod tests {
         assert!(
             msg.contains("Playwright npm package is missing"),
             "expected missing playwright hint, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn map_playwright_error_includes_timeout_hint() {
+        let err = map_playwright_error(
+            "exit status: 1",
+            r#"{"status":"error","message":"Navigation timeout of 30000ms exceeded"}"#,
+        );
+        let msg = format!("{}", err);
+        assert!(
+            msg.to_ascii_lowercase().contains("timeout"),
+            "expected timeout mention, got: {msg}"
+        );
+        assert!(
+            msg.contains("--nav-timeout") || msg.contains("--network-idle-timeout"),
+            "expected CLI hint, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn map_playwright_status_error_includes_timeout_hint() {
+        let err =
+            map_playwright_status_error("1", "Timeout waiting for networkidle state".to_string());
+        let msg = format!("{}", err);
+        assert!(
+            msg.to_ascii_lowercase().contains("timeout"),
+            "expected timeout mention, got: {msg}"
+        );
+        assert!(
+            msg.contains("--nav-timeout") || msg.contains("--network-idle-timeout"),
+            "expected CLI hint, got: {msg}"
         );
     }
 
