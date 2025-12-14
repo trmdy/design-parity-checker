@@ -3,6 +3,7 @@ use crate::types::{
 };
 use crate::{DpcError, Result, Viewport};
 use std::collections::HashMap;
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -177,10 +178,11 @@ async function run() {
 run();
 "#;
 
-const DEFAULT_NAVIGATION_TIMEOUT: Duration = Duration::from_secs(20);
-const DEFAULT_NETWORK_IDLE_TIMEOUT: Duration = Duration::from_secs(5);
+const DEFAULT_NAVIGATION_TIMEOUT: Duration = Duration::from_secs(30);
+const DEFAULT_NETWORK_IDLE_TIMEOUT: Duration = Duration::from_secs(10);
 const DEFAULT_PROCESS_TIMEOUT: Duration = Duration::from_secs(45);
 const NODE_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
+const PLAYWRIGHT_CHECK_SCRIPT: &str = "require('playwright'); process.stdout.write('ok');";
 
 #[derive(Debug, Clone)]
 pub struct BrowserOptions {
@@ -250,7 +252,7 @@ impl BrowserManager {
         url: &str,
         screenshot_path: &Path,
     ) -> Result<NormalizedView> {
-        self.ensure_node_available().await?;
+        ensure_node_available(&self.options.node_command).await?;
         let _permit = self
             .semaphore
             .acquire()
@@ -266,6 +268,18 @@ impl BrowserManager {
         url: &str,
         screenshot_path: Option<&Path>,
     ) -> Result<PageRenderResult> {
+        // Fail fast if Node is missing to avoid spawning Playwright unnecessarily.
+        self.ensure_node_available().await?;
+        ensure_playwright_available(&self.options.node_command).await?;
+
+        if let Some(path) = screenshot_path {
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).map_err(|e| {
+                    DpcError::Config(format!("Failed to create screenshot dir: {}", e))
+                })?;
+            }
+        }
+
         let mut cmd = Command::new(&self.options.node_command);
         cmd.arg("-e")
             .arg(PLAYWRIGHT_SCRIPT)
@@ -355,29 +369,7 @@ impl BrowserManager {
     }
 
     async fn ensure_node_available(&self) -> Result<()> {
-        let mut cmd = Command::new(&self.options.node_command);
-        cmd.arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-
-        let status = tokio::time::timeout(NODE_CHECK_TIMEOUT, cmd.status())
-            .await
-            .map_err(|_| {
-                DpcError::Config(format!(
-                    "Timed out checking node availability after {:?}",
-                    NODE_CHECK_TIMEOUT
-                ))
-            })?
-            .map_err(|err| map_spawn_error(err, &self.options.node_command))?;
-
-        if !status.success() {
-            return Err(DpcError::Config(format!(
-                "Node command {:?} is not available (exit {})",
-                self.options.node_command, status
-            )));
-        }
-
-        Ok(())
+        ensure_node_available(&self.options.node_command).await
     }
 }
 
@@ -406,15 +398,16 @@ fn map_spawn_error(err: io::Error, command: &str) -> DpcError {
 
 fn map_playwright_error(status_text: impl Into<String>, stderr: &str) -> DpcError {
     if let Ok(error) = serde_json::from_str::<ScriptError>(stderr) {
-        let message = if error.message.contains("Cannot find module 'playwright'") {
-            "Playwright npm package is missing; install with `npm install playwright`.".to_string()
-        } else {
-            format!(
-                "Playwright error (status {}): {}",
-                error.status, error.message
-            )
-        };
-        return DpcError::Config(message);
+        return map_playwright_status_error(&error.status, error.message);
+    }
+
+    if stderr
+        .to_ascii_lowercase()
+        .contains("cannot find module 'playwright'")
+    {
+        return DpcError::Config(
+            "Playwright npm package is missing; install with `npm install playwright`.".to_string(),
+        );
     }
 
     DpcError::Config(format!(
@@ -424,8 +417,21 @@ fn map_playwright_error(status_text: impl Into<String>, stderr: &str) -> DpcErro
     ))
 }
 
+fn map_playwright_status_error(status: &str, message: String) -> DpcError {
+    if message
+        .to_ascii_lowercase()
+        .contains("cannot find module 'playwright'")
+    {
+        DpcError::Config(
+            "Playwright npm package is missing; install with `npm install playwright`.".to_string(),
+        )
+    } else {
+        DpcError::Config(format!("Playwright error (status {}): {}", status, message))
+    }
+}
+
 /// Options for URL to NormalizedView conversion.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct UrlToViewOptions {
     pub node_command: String,
     pub viewport: Viewport,
@@ -433,6 +439,7 @@ pub struct UrlToViewOptions {
     pub navigation_timeout: Duration,
     pub network_idle_timeout: Duration,
     pub process_timeout: Duration,
+    pub progress: Option<Arc<dyn Fn(&str) + Send + Sync>>,
 }
 
 impl Default for UrlToViewOptions {
@@ -444,6 +451,7 @@ impl Default for UrlToViewOptions {
             navigation_timeout: DEFAULT_NAVIGATION_TIMEOUT,
             network_idle_timeout: DEFAULT_NETWORK_IDLE_TIMEOUT,
             process_timeout: DEFAULT_PROCESS_TIMEOUT,
+            progress: None,
         }
     }
 }
@@ -457,7 +465,14 @@ impl From<BrowserOptions> for UrlToViewOptions {
             navigation_timeout: opts.navigation_timeout,
             network_idle_timeout: opts.network_idle_timeout,
             process_timeout: opts.process_timeout,
+            progress: None,
         }
+    }
+}
+
+fn log_progress(progress: &Option<Arc<dyn Fn(&str) + Send + Sync>>, message: &str) {
+    if let Some(cb) = progress {
+        cb(message);
     }
 }
 
@@ -480,6 +495,24 @@ pub async fn url_to_normalized_view(
     screenshot_path: &Path,
     options: UrlToViewOptions,
 ) -> Result<NormalizedView> {
+    let progress = options.progress.clone();
+    let nav_secs = options.navigation_timeout.as_secs();
+    let idle_secs = options.network_idle_timeout.as_secs();
+    log_progress(
+        &progress,
+        &format!(
+            "Launching headless browser for {} ({}x{}, nav {}s, idle {}s)…",
+            url, options.viewport.width, options.viewport.height, nav_secs, idle_secs
+        ),
+    );
+    ensure_node_available(&options.node_command).await?;
+    ensure_playwright_available(&options.node_command).await?;
+
+    if let Some(parent) = screenshot_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| DpcError::Config(format!("Failed to create screenshot dir: {}", e)))?;
+    }
+
     let mut cmd = Command::new(&options.node_command);
     cmd.arg("-e")
         .arg(PLAYWRIGHT_SCRIPT_WITH_DOM)
@@ -493,6 +526,11 @@ pub async fn url_to_normalized_view(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
+    log_progress(
+        &progress,
+        "Navigating and waiting for network idle (Playwright)…",
+    );
+    let start = Instant::now();
     let mut child = cmd
         .spawn()
         .map_err(|err| map_spawn_error(err, &options.node_command))?;
@@ -522,6 +560,10 @@ pub async fn url_to_normalized_view(
         Err(_) => {
             let _ = child.kill().await;
             let _ = child.wait().await;
+            log_progress(
+                &progress,
+                "Playwright timed out; process killed after exceeding timeout.",
+            );
             return Err(DpcError::Config(format!(
                 "Playwright timed out after {:?}",
                 options.process_timeout
@@ -547,6 +589,9 @@ pub async fn url_to_normalized_view(
     })?;
 
     if result.status != "ok" {
+        if let Ok(err) = serde_json::from_str::<ScriptError>(&stdout) {
+            return Err(map_playwright_status_error(&err.status, err.message));
+        }
         return Err(DpcError::Config(format!(
             "Playwright returned non-ok status: {}",
             result.status
@@ -558,6 +603,11 @@ pub async fn url_to_normalized_view(
     })?;
 
     let dom_snapshot = convert_raw_dom(dom_data);
+
+    log_progress(
+        &progress,
+        &format!("Capture finished in {:.1}s", start.elapsed().as_secs_f32()),
+    );
 
     Ok(NormalizedView {
         kind: ResourceKind::Url,
@@ -661,6 +711,70 @@ fn convert_raw_dom(dom_data: RawDomSnapshot) -> DomSnapshot {
     }
 }
 
+fn is_mock_rendering_enabled() -> bool {
+    std::env::var("DPC_MOCK_RENDER_REF").is_ok()
+        || std::env::var("DPC_MOCK_RENDER_IMPL").is_ok()
+        || std::env::var("DPC_MOCK_RENDERERS_DIR").is_ok()
+}
+
+async fn ensure_node_available(node_command: &str) -> Result<()> {
+    let mut cmd = Command::new(node_command);
+    cmd.arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    let status = tokio::time::timeout(NODE_CHECK_TIMEOUT, cmd.status())
+        .await
+        .map_err(|_| {
+            DpcError::Config(format!(
+                "Timed out checking node availability after {:?}",
+                NODE_CHECK_TIMEOUT
+            ))
+        })?
+        .map_err(|err| map_spawn_error(err, node_command))?;
+
+    if !status.success() {
+        return Err(DpcError::Config(format!(
+            "Node command {:?} is not available (exit {})",
+            node_command, status
+        )));
+    }
+
+    Ok(())
+}
+
+async fn ensure_playwright_available(node_command: &str) -> Result<()> {
+    if is_mock_rendering_enabled() {
+        return Ok(());
+    }
+
+    let mut cmd = Command::new(node_command);
+    cmd.arg("-e")
+        .arg(PLAYWRIGHT_CHECK_SCRIPT)
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped());
+
+    let output = tokio::time::timeout(NODE_CHECK_TIMEOUT, cmd.output())
+        .await
+        .map_err(|_| {
+            DpcError::Config(format!(
+                "Timed out checking Playwright availability after {:?}",
+                NODE_CHECK_TIMEOUT
+            ))
+        })?
+        .map_err(|err| map_spawn_error(err, node_command))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(map_playwright_error(
+            format!("{:?}", output.status),
+            &stderr,
+        ));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -699,6 +813,7 @@ mod tests {
         assert_eq!(opts.navigation_timeout, DEFAULT_NAVIGATION_TIMEOUT);
         assert_eq!(opts.network_idle_timeout, DEFAULT_NETWORK_IDLE_TIMEOUT);
         assert_eq!(opts.process_timeout, DEFAULT_PROCESS_TIMEOUT);
+        assert!(opts.progress.is_none());
     }
 
     #[test]
@@ -724,6 +839,7 @@ mod tests {
         assert_eq!(view_opts.navigation_timeout, Duration::from_secs(30));
         assert_eq!(view_opts.network_idle_timeout, Duration::from_secs(10));
         assert_eq!(view_opts.process_timeout, Duration::from_secs(60));
+        assert!(view_opts.progress.is_none());
     }
 
     #[tokio::test]
@@ -734,6 +850,12 @@ mod tests {
         });
 
         let result = manager.ensure_node_available().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn ensure_playwright_available_fails_for_missing_binary() {
+        let result = ensure_playwright_available("definitely-not-a-binary").await;
         assert!(result.is_err());
     }
 
@@ -749,6 +871,35 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn map_playwright_error_detects_missing_module() {
+        let err = map_playwright_error(
+            "1",
+            r#"{"status":"error","message":"Cannot find module 'playwright'"}"#,
+        );
+        match err {
+            DpcError::Config(msg) => {
+                assert!(
+                    msg.contains("Playwright npm package is missing"),
+                    "expected missing playwright hint, got: {msg}"
+                );
+            }
+            other => panic!("expected config error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_playwright_error_handles_plain_stderr_missing_module() {
+        let err = map_playwright_error("1", "Error: Cannot find module 'playwright'");
+        match err {
+            DpcError::Config(msg) => assert!(
+                msg.contains("npm install playwright"),
+                "expected npm install hint, got: {msg}"
+            ),
+            other => panic!("expected config error, got {other:?}"),
+        }
     }
 
     #[test]
@@ -870,6 +1021,19 @@ mod tests {
         );
         let msg = format!("{}", err);
         assert!(msg.contains("Playwright npm package is missing"));
+    }
+
+    #[test]
+    fn map_playwright_error_handles_non_json_missing_module() {
+        let err = map_playwright_error(
+            "exit status: 1",
+            "Error: Cannot find module 'playwright'\n    at Module._resolveFilename",
+        );
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("Playwright npm package is missing"),
+            "expected missing playwright hint, got: {msg}"
+        );
     }
 
     #[test]
