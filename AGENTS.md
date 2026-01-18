@@ -10,6 +10,17 @@ This makes it possible to automatically evaluate how precise an LLM (or human) h
 
 ## Codebase structure
 
+- `src/` Rust crate. Entrypoints `src/main.rs` (bin) + `src/lib.rs` (lib).
+- `src/commands/` CLI command handlers.
+- `src/browser/` browser automation + screenshots.
+- `src/figma/` + `src/figma_client.rs` Figma integration.
+- `src/metrics/` similarity metrics + scoring logic.
+- `src/pipeline.rs` orchestration pipeline; `src/output.rs` result formatting.
+- `src/types/` + `src/types.rs` shared types.
+- `tests/` integration + CLI tests.
+- `test_assets/` fixture images + data.
+- `docs/` project docs + findings.
+
 ## Agent protocol
 
 - No destructive git commands.
