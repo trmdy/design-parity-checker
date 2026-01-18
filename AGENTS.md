@@ -6,7 +6,18 @@ This makes it possible to automatically evaluate how precise an LLM (or human) h
 
 ## Goals of the project
 
+- Make it possible to quickly compare two images.
+- Make it possible to quickly compare an image against a live running website.
+- Make it possible to quickly compare an image against a Figma reference design.
+- And the other combinations of these.
+- Make it possible for LLMs to quickly understand where their implementation is lacking.
+- Get suggestions from the system for minimal possible fixes to get things up to spec.
+
 ## Non-goals of the project
+
+- We are not a code-generator.
+- We are not a generic image processing tool.
+- We don't care about the accuracy of comparing non-app images.
 
 ## Codebase structure
 
@@ -32,4 +43,3 @@ This makes it possible to automatically evaluate how precise an LLM (or human) h
 - `sv task` for task tracking; `sv task --robot-help`.
 - `fmail` for agent coordination.
 
-## 
