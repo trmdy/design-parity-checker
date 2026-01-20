@@ -5,8 +5,9 @@ use std::sync::Arc;
 use dpc_lib::output::DPC_OUTPUT_VERSION;
 use dpc_lib::types::ResourceKind;
 use dpc_lib::{
-    calculate_combined_score, default_metrics, parse_resource, run_metrics, CompareOutput,
-    DpcError, DpcOutput, MetricKind, ResourceDescriptor, SemanticAnalyzer, Viewport,
+    calculate_combined_score, parse_resource, run_metrics, ColorPaletteMetric, CompareOutput,
+    ContentSimilarity, DpcError, DpcOutput, LayoutSimilarity, Metric, MetricKind, PixelSimilarity,
+    ResourceDescriptor, SemanticAnalyzer, TypographySimilarity, Viewport,
 };
 
 use crate::cli::OutputFormat;
@@ -43,6 +44,9 @@ pub async fn run_compare(
     nav_timeout: u64,
     network_idle_timeout: u64,
     process_timeout: u64,
+    pixel_align: Option<bool>,
+    pixel_align_max_shift: Option<u32>,
+    pixel_align_downscale: Option<u32>,
     semantic_analysis: bool,
     context: Option<String>,
 ) -> ExitCode {
@@ -58,6 +62,9 @@ pub async fn run_compare(
         nav_timeout,
         network_idle_timeout,
         process_timeout,
+        pixel_align,
+        pixel_align_max_shift,
+        pixel_align_downscale,
         &config,
         &flag_sources,
     );
@@ -67,6 +74,7 @@ pub async fn run_compare(
     let network_idle_timeout = resolved.network_idle_timeout;
     let process_timeout = resolved.process_timeout;
     let score_weights = resolved.weights;
+    let pixel_alignment = resolved.pixel_alignment;
 
     if verbose {
         log_effective_config(
@@ -77,6 +85,7 @@ pub async fn run_compare(
             nav_timeout,
             network_idle_timeout,
             process_timeout,
+            &pixel_alignment,
         );
     }
     if verbose {
@@ -89,6 +98,7 @@ pub async fn run_compare(
                 network_idle_timeout,
                 process_timeout,
                 &score_weights,
+                &pixel_alignment,
                 config_source
             )
         );
@@ -212,7 +222,15 @@ pub async fn run_compare(
     if verbose {
         eprintln!("Running metrics: {:?}", effective_metrics);
     }
-    let all_metrics = default_metrics();
+    let mut pixel_metric = PixelSimilarity::default();
+    pixel_metric.alignment = pixel_alignment;
+    let all_metrics: Vec<Box<dyn Metric>> = vec![
+        Box::new(pixel_metric),
+        Box::new(LayoutSimilarity::default()),
+        Box::new(TypographySimilarity::default()),
+        Box::new(ColorPaletteMetric::default()),
+        Box::new(ContentSimilarity::default()),
+    ];
     let mut metrics_scores =
         match run_metrics(&all_metrics, &effective_metrics, &ref_view, &impl_view) {
             Ok(scores) => scores,
@@ -306,6 +324,7 @@ pub async fn run_compare(
         &ref_view,
         &impl_view,
         should_keep_artifacts,
+        pixel_alignment,
     ) {
         Ok(paths) => Some(paths),
         Err(err) => return render_error(err, format, output.clone()),

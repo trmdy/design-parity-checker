@@ -39,6 +39,7 @@ pub mod error;
 #[path = "figma/mod.rs"]
 pub mod figma;
 pub mod figma_client;
+pub mod image_alignment;
 pub mod image_loader;
 pub mod metrics;
 pub mod output;

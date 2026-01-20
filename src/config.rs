@@ -19,6 +19,7 @@ pub struct Config {
     pub metric_weights: MetricWeights,
     pub timeouts: Timeouts,
     pub semantic: SemanticConfig,
+    pub pixel_alignment: PixelAlignmentConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -31,6 +32,24 @@ pub struct SemanticConfig {
     /// Minimum intensity threshold (0.0-1.0) for regions to analyze.
     /// Regions below this threshold are skipped as likely rendering noise.
     pub min_intensity: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PixelAlignmentConfig {
+    pub enabled: bool,
+    pub max_shift: u32,
+    pub downscale_max_dim: u32,
+}
+
+impl Default for PixelAlignmentConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            max_shift: 16,
+            downscale_max_dim: 256,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +104,7 @@ impl Default for Config {
             metric_weights: MetricWeights::default(),
             timeouts: Timeouts::default(),
             semantic: SemanticConfig::default(),
+            pixel_alignment: PixelAlignmentConfig::default(),
         }
     }
 }
@@ -201,6 +221,19 @@ impl Config {
                 self.timeouts.process
             },
         };
+        self.pixel_alignment = PixelAlignmentConfig {
+            enabled: self.pixel_alignment.enabled,
+            max_shift: if self.pixel_alignment.max_shift == 0 {
+                defaults.pixel_alignment.max_shift
+            } else {
+                self.pixel_alignment.max_shift
+            },
+            downscale_max_dim: if self.pixel_alignment.downscale_max_dim == 0 {
+                defaults.pixel_alignment.downscale_max_dim
+            } else {
+                self.pixel_alignment.downscale_max_dim
+            },
+        };
     }
 
     /// Validate thresholds and weights to ensure reasonable ranges.
@@ -227,13 +260,23 @@ impl Config {
         if self.viewport.width == 0 || self.viewport.height == 0 {
             return Err("viewport width and height must be greater than zero".to_string());
         }
+        if self.pixel_alignment.enabled && self.pixel_alignment.max_shift == 0 {
+            return Err("pixel_alignment.max_shift must be greater than zero when enabled"
+                .to_string());
+        }
+        if self.pixel_alignment.enabled && self.pixel_alignment.downscale_max_dim == 0 {
+            return Err(
+                "pixel_alignment.downscale_max_dim must be greater than zero when enabled"
+                    .to_string(),
+            );
+        }
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Config, MetricWeights, SemanticConfig, Timeouts};
+    use super::{Config, MetricWeights, PixelAlignmentConfig, SemanticConfig, Timeouts};
     use crate::Viewport;
     use std::time::Duration;
 
@@ -249,6 +292,9 @@ mod tests {
         assert_eq!(cfg.timeouts.navigation, Duration::from_secs(30));
         assert_eq!(cfg.timeouts.network_idle, Duration::from_secs(10));
         assert_eq!(cfg.timeouts.process, Duration::from_secs(45));
+        assert!(!cfg.pixel_alignment.enabled);
+        assert_eq!(cfg.pixel_alignment.max_shift, 16);
+        assert_eq!(cfg.pixel_alignment.downscale_max_dim, 256);
     }
 
     #[test]
@@ -272,6 +318,11 @@ mod tests {
                 process: Duration::from_secs(60),
             },
             semantic: SemanticConfig::default(),
+            pixel_alignment: PixelAlignmentConfig {
+                enabled: true,
+                max_shift: 8,
+                downscale_max_dim: 128,
+            },
         };
 
         assert_eq!(cfg.viewport.width, 1280);
@@ -282,6 +333,9 @@ mod tests {
         assert_eq!(cfg.timeouts.navigation, Duration::from_secs(20));
         assert_eq!(cfg.timeouts.network_idle, Duration::from_secs(5));
         assert_eq!(cfg.timeouts.process, Duration::from_secs(60));
+        assert!(cfg.pixel_alignment.enabled);
+        assert_eq!(cfg.pixel_alignment.max_shift, 8);
+        assert_eq!(cfg.pixel_alignment.downscale_max_dim, 128);
     }
 
     #[test]

@@ -1,1 +1,9 @@
 /target
+node_modules/
+test_assets/__pycache__/
+.venv/
+# sv workspace-local state
+.sv/
+# sv task temp files
+.tasks/*.lock
+.tasks/*.tmp

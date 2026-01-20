@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use dpc_lib::image_alignment::ImageAlignmentOptions;
 use dpc_lib::types::Viewport;
 use dpc_lib::{Config, DpcError, ScoreWeights};
 
@@ -40,6 +41,7 @@ pub struct ResolvedCompareSettings {
     pub network_idle_timeout: u64,
     pub process_timeout: u64,
     pub weights: ScoreWeights,
+    pub pixel_alignment: ImageAlignmentOptions,
 }
 
 /// Merge CLI arguments with config file, preferring CLI when flags are present.
@@ -49,6 +51,9 @@ pub fn resolve_compare_settings(
     cli_nav_timeout: u64,
     cli_network_idle_timeout: u64,
     cli_process_timeout: u64,
+    cli_pixel_align: Option<bool>,
+    cli_pixel_align_max_shift: Option<u32>,
+    cli_pixel_align_downscale: Option<u32>,
     config: &Config,
     flags: &CompareFlagSources,
 ) -> ResolvedCompareSettings {
@@ -58,6 +63,13 @@ pub fn resolve_compare_settings(
         typography: config.metric_weights.typography,
         color: config.metric_weights.color,
         content: config.metric_weights.content,
+    };
+
+    let pixel_alignment = ImageAlignmentOptions {
+        enabled: cli_pixel_align.unwrap_or(config.pixel_alignment.enabled),
+        max_shift: cli_pixel_align_max_shift.unwrap_or(config.pixel_alignment.max_shift),
+        downscale_max_dim: cli_pixel_align_downscale
+            .unwrap_or(config.pixel_alignment.downscale_max_dim),
     };
 
     ResolvedCompareSettings {
@@ -87,6 +99,7 @@ pub fn resolve_compare_settings(
             config.timeouts.process.as_secs()
         },
         weights,
+        pixel_alignment,
     }
 }
 
@@ -119,12 +132,13 @@ pub fn log_effective_config(
     nav_timeout: u64,
     network_idle_timeout: u64,
     process_timeout: u64,
+    pixel_alignment: &ImageAlignmentOptions,
 ) {
     let config_source = config_path
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|| "defaults/built-in".to_string());
     eprintln!(
-        "Effective config (source: {}): viewport {}x{}, threshold {:.2}, timeouts nav {}s / idle {}s / process {}s, weights pixel {:.2}, layout {:.2}, typography {:.2}, color {:.2}, content {:.2}",
+        "Effective config (source: {}): viewport {}x{}, threshold {:.2}, timeouts nav {}s / idle {}s / process {}s, weights pixel {:.2}, layout {:.2}, typography {:.2}, color {:.2}, content {:.2}, pixel_align {} (max_shift {}, downscale {})",
         config_source,
         viewport.width,
         viewport.height,
@@ -136,7 +150,10 @@ pub fn log_effective_config(
         weights.layout,
         weights.typography,
         weights.color,
-        weights.content
+        weights.content,
+        pixel_alignment.enabled,
+        pixel_alignment.max_shift,
+        pixel_alignment.downscale_max_dim
     );
 }
 
@@ -148,13 +165,14 @@ pub fn format_effective_config(
     network_idle_timeout: u64,
     process_timeout: u64,
     weights: &ScoreWeights,
+    pixel_alignment: &ImageAlignmentOptions,
     config_source: Option<&Path>,
 ) -> String {
     let source = config_source
         .map(|p| p.display().to_string())
         .unwrap_or_else(|| "defaults".to_string());
     format!(
-        "Effective config [{source}]: viewport={}x{}, threshold={:.2}, timeouts: nav={}s, network-idle={}s, process={}s, weights: pixel={:.2}, layout={:.2}, typography={:.2}, color={:.2}, content={:.2}",
+        "Effective config [{source}]: viewport={}x{}, threshold={:.2}, timeouts: nav={}s, network-idle={}s, process={}s, weights: pixel={:.2}, layout={:.2}, typography={:.2}, color={:.2}, content={:.2}, pixel_align={} (max_shift {}, downscale {})",
         viewport.width,
         viewport.height,
         threshold,
@@ -165,14 +183,17 @@ pub fn format_effective_config(
         weights.layout,
         weights.typography,
         weights.color,
-        weights.content
+        weights.content,
+        pixel_alignment.enabled,
+        pixel_alignment.max_shift,
+        pixel_alignment.downscale_max_dim
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dpc_lib::config::{MetricWeights, SemanticConfig, Timeouts};
+    use dpc_lib::config::{MetricWeights, PixelAlignmentConfig, SemanticConfig, Timeouts};
     use std::time::Duration;
 
     #[test]
@@ -196,6 +217,7 @@ mod tests {
                 process: Duration::from_secs(7),
             },
             semantic: SemanticConfig::default(),
+            pixel_alignment: PixelAlignmentConfig::default(),
         };
         let flags = CompareFlagSources::default();
         let resolved = resolve_compare_settings(
@@ -207,6 +229,9 @@ mod tests {
             30,
             10,
             45,
+            None,
+            None,
+            None,
             &cfg,
             &flags,
         );
@@ -219,6 +244,7 @@ mod tests {
         assert_eq!(resolved.process_timeout, 7);
         assert!((resolved.weights.pixel - 1.0).abs() < f32::EPSILON);
         assert!((resolved.weights.content - 5.0).abs() < f32::EPSILON);
+        assert!(!resolved.pixel_alignment.enabled);
     }
 
     #[test]
@@ -240,6 +266,9 @@ mod tests {
             50,
             60,
             70,
+            Some(true),
+            Some(12),
+            Some(128),
             &cfg,
             &flags,
         );
@@ -250,6 +279,9 @@ mod tests {
         assert_eq!(resolved.nav_timeout, 50);
         assert_eq!(resolved.network_idle_timeout, 60);
         assert_eq!(resolved.process_timeout, 70);
+        assert!(resolved.pixel_alignment.enabled);
+        assert_eq!(resolved.pixel_alignment.max_shift, 12);
+        assert_eq!(resolved.pixel_alignment.downscale_max_dim, 128);
     }
 
     #[test]
@@ -270,6 +302,7 @@ mod tests {
                 color: 0.15,
                 content: 0.1,
             },
+            &ImageAlignmentOptions::default(),
             Some(Path::new("dpc.toml")),
         );
         assert!(summary.contains("1280x720"));

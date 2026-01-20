@@ -7,6 +7,7 @@ DPC accepts a TOML config file (e.g., `dpc.toml`) via `--config <path>`. CLI fla
 - `threshold`: `0.0`–`1.0`
 - `[metric_weights]`: `pixel`, `layout`, `typography`, `color`, `content` (all must be > 0)
 - `[timeouts]`: `navigation`, `network_idle`, `process` as human-friendly durations (`"30s"`, `"2m"`, etc.)
+- `[pixel_alignment]`: `enabled` (bool), `max_shift` (pixels), `downscale_max_dim` (pixels)
 
 Invalid or missing values yield a config error (exit code 2) before any rendering. Use `--verbose` to log the effective config.
 
@@ -26,4 +27,9 @@ content = 0.1
 navigation = "20s"
 network_idle = "8s"
 process = "45s"
+
+[pixel_alignment]
+enabled = true
+max_shift = 16
+downscale_max_dim = 256
 ```

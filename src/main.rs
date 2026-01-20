@@ -36,6 +36,9 @@ async fn run() -> ExitCode {
             nav_timeout,
             network_idle_timeout,
             process_timeout,
+            pixel_align,
+            pixel_align_max_shift,
+            pixel_align_downscale,
             semantic_analysis,
             context,
         } => {
@@ -59,6 +62,9 @@ async fn run() -> ExitCode {
                 nav_timeout,
                 network_idle_timeout,
                 process_timeout,
+                pixel_align,
+                pixel_align_max_shift,
+                pixel_align_downscale,
                 semantic_analysis,
                 context,
             )

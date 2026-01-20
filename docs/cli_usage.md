@@ -1,7 +1,7 @@
 # CLI Usage Cheatsheet
 
 Commands:
-- `dpc compare --ref <resource> --impl <resource> [--ref-type/--impl-type] [--viewport WxH] [--threshold FLOAT] [--metrics list] [--ignore-selectors ".ads,#banner"] [--ignore-regions regions.json] [--format json|pretty] [--output PATH] [--keep-artifacts|--artifacts-dir PATH]`
+- `dpc compare --ref <resource> --impl <resource> [--ref-type/--impl-type] [--viewport WxH] [--threshold FLOAT] [--metrics list] [--ignore-selectors ".ads,#banner"] [--ignore-regions regions.json] [--pixel-align true|false] [--pixel-align-max-shift PX] [--pixel-align-downscale PX] [--format json|pretty] [--output PATH] [--keep-artifacts|--artifacts-dir PATH]`
 - `dpc generate-code --input <resource> [--stack html+tailwind] [--viewport WxH] [--output PATH] [--format json|pretty]` (codegen backend; requires DPC_MOCK_CODE|DPC_CODEGEN_CMD|DPC_CODEGEN_URL)
 - `dpc quality --input <resource> [--viewport WxH] [--output PATH] [--format json|pretty]` (heuristic)
 
@@ -17,6 +17,7 @@ Key options:
 - `--ignore-regions`: JSON array of `{x,y,width,height}` rectangles to mask before pixel/color metrics. A ready-made full-frame mask lives at `test_assets/ignore_regions_example.json`.
 - `--keep-artifacts` or `--artifacts-dir`: retain screenshots/DOM/Figma exports; artifacts block surfaces in output so downstream jobs can consume them. Default temp dir lives under the OS temp folder as `dpc-<pid>-<timestamp>/` and is removed when neither flag is set.
 - Timeouts: `--nav-timeout` (default 30s), `--network-idle-timeout` (default 10s), `--process-timeout` (default 45s).
+- Pixel alignment: `--pixel-align true|false` to search for the best x/y offset before pixel diff; tune with `--pixel-align-max-shift` and `--pixel-align-downscale`.
 
 Outputs:
 - `--format json|pretty`: on a TTY with no `--output`, `pretty` renders a human-readable summary (status badge, similarity, top issues, metrics, artifacts). When piping or using `--output`, both formats emit JSON; `pretty` pretty-prints JSON for readability while keeping schema identical.

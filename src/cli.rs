@@ -120,6 +120,27 @@ pub enum Commands {
 
         #[arg(
             long,
+            value_name = "BOOL",
+            help = "Enable pixel alignment (true/false) to compensate for x/y shifts"
+        )]
+        pixel_align: Option<bool>,
+
+        #[arg(
+            long,
+            value_name = "PX",
+            help = "Max pixel shift for alignment search (pixels)"
+        )]
+        pixel_align_max_shift: Option<u32>,
+
+        #[arg(
+            long,
+            value_name = "PX",
+            help = "Downscale max dimension for alignment search (pixels)"
+        )]
+        pixel_align_downscale: Option<u32>,
+
+        #[arg(
+            long,
             help = "Enable semantic analysis of diff regions using a vision model (requires DPC_VISION_API_KEY or OPENAI_API_KEY)"
         )]
         semantic_analysis: bool,

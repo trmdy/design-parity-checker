@@ -1,4 +1,5 @@
 use crate::error::DpcError;
+use crate::image_alignment::{align_implementation, ImageAlignmentOptions};
 use crate::image_loader::resize_to_match;
 use crate::types::{DiffSeverity, NormalizedView, PixelDiffReason, PixelDiffRegion, PixelMetric};
 use crate::Result;
@@ -29,6 +30,7 @@ pub struct PixelSimilarity {
     pub block_size: u32,
     pub thresholds: PixelDiffThresholds,
     pub clustering: ClusteringConfig,
+    pub alignment: ImageAlignmentOptions,
 }
 
 impl Default for PixelSimilarity {
@@ -37,6 +39,7 @@ impl Default for PixelSimilarity {
             block_size: 32,
             thresholds: PixelDiffThresholds::default(),
             clustering: ClusteringConfig::default(),
+            alignment: ImageAlignmentOptions::default(),
         }
     }
 }
@@ -52,6 +55,11 @@ impl PixelSimilarity {
         if ref_img.dimensions() != impl_img.dimensions() {
             let (w, h) = ref_img.dimensions();
             impl_img = resize_to_match(&impl_img, w, h);
+        }
+
+        if self.alignment.enabled && self.alignment.max_shift > 0 {
+            let (aligned, _) = align_implementation(&ref_img, &impl_img, self.alignment);
+            impl_img = aligned;
         }
 
         let ref_luma = ref_img.to_luma8();

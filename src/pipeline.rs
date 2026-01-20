@@ -4,9 +4,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use image::{imageops::FilterType, GenericImageView, RgbaImage};
+use image::{imageops::FilterType, DynamicImage, GenericImageView, RgbaImage};
 use serde::{Deserialize, Serialize};
 
+use dpc_lib::image_alignment::{align_implementation, ImageAlignmentOptions};
 use dpc_lib::types::{DomNode, MetricScores, ResourceKind, Viewport};
 use dpc_lib::{
     figma_to_normalized_view, generate_top_issues, image_to_normalized_view,
@@ -316,6 +317,15 @@ pub fn generate_diff_heatmap(
         impl_img = impl_img.resize_exact(ref_w, ref_h, FilterType::Lanczos3);
     }
 
+    generate_diff_heatmap_from_images(&ref_img, &impl_img, output_path)
+}
+
+fn generate_diff_heatmap_from_images(
+    ref_img: &DynamicImage,
+    impl_img: &DynamicImage,
+    output_path: &Path,
+) -> Result<(), DpcError> {
+    let (ref_w, ref_h) = ref_img.dimensions();
     let ref_rgba = ref_img.to_rgba8();
     let impl_rgba = impl_img.to_rgba8();
     let mut heat = RgbaImage::new(ref_w, ref_h);
@@ -358,6 +368,7 @@ pub fn persist_compare_artifacts(
     ref_view: &NormalizedView,
     impl_view: &NormalizedView,
     keep: bool,
+    pixel_alignment: ImageAlignmentOptions,
 ) -> Result<CompareArtifacts, DpcError> {
     let mut artifacts = CompareArtifacts {
         directory: artifacts_dir.to_path_buf(),
@@ -374,11 +385,18 @@ pub fn persist_compare_artifacts(
     if keep {
         // Save diff heatmap for quick visual inspection
         let diff_path = artifacts_dir.join("diff_heatmap.png");
-        generate_diff_heatmap(
-            &ref_view.screenshot_path,
-            &impl_view.screenshot_path,
-            &diff_path,
-        )?;
+        if pixel_alignment.enabled && pixel_alignment.max_shift > 0 {
+            let ref_img = image::open(&ref_view.screenshot_path).map_err(DpcError::from)?;
+            let impl_img = image::open(&impl_view.screenshot_path).map_err(DpcError::from)?;
+            let (aligned_impl, _) = align_implementation(&ref_img, &impl_img, pixel_alignment);
+            generate_diff_heatmap_from_images(&ref_img, &aligned_impl, &diff_path)?;
+        } else {
+            generate_diff_heatmap(
+                &ref_view.screenshot_path,
+                &impl_view.screenshot_path,
+                &diff_path,
+            )?;
+        }
         artifacts.diff_image = Some(diff_path);
 
         if let Some(dom) = &ref_view.dom {
