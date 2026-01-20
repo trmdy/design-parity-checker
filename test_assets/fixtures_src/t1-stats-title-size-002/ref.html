@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stats</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .frame {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 64px;
+    }
+    .layout {
+      display: flex;
+      gap: 48px;
+      align-items: center;
+    }
+    .stats {
+      display: grid;
+      gap: 16px;
+    }
+    .stat {
+      padding: 16px 20px;
+      border-radius: 14px;
+      background: white;
+      border: 1px solid #e2e8f0;
+    }
+    .stat strong {
+      display: block;
+      font-size: 30px;
+      margin-bottom: 4px;
+    }
+    .aside {
+      padding: 28px;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      max-width: 260px;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="layout">
+      <div class="stats">
+        <div class="stat"><strong>1.2k</strong>comparisons</div>
+        <div class="stat"><strong>92%</strong>pass rate</div>
+        <div class="stat"><strong>48</strong>open tasks</div>
+      </div>
+      <div class="aside">
+        <h3>Weekly focus</h3>
+        <p>Reduce typography drift and spacing regressions.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

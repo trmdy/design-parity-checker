@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t3-hero-layout-003",
+  "title": "Hero layout structure change",
+  "category": [
+    "layout",
+    "spacing"
+  ],
+  "complexity": "high",
+  "mutations": [
+    {
+      "target": ".hero",
+      "property": "grid-template-columns",
+      "from": "1.2fr 0.8fr",
+      "to": "1fr",
+      "delta": "large"
+    },
+    {
+      "target": ".hero",
+      "property": "gap",
+      "from": "48px",
+      "to": "24px",
+      "delta": "medium"
+    },
+    {
+      "target": ".panel",
+      "property": "box-shadow",
+      "from": "0 20px 40px rgba(0,0,0,0.08)",
+      "to": "0 20px 32px rgba(0,0,0,0.16)",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "layout.structure",
+      "severity": "high"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1,
+    "similarity_max": 0.995
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

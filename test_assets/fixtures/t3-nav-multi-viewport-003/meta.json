@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t3-nav-multi-viewport-003",
+  "title": "Mobile nav icon mismatch",
+  "category": [
+    "icon",
+    "layout"
+  ],
+  "complexity": "high",
+  "mutations": [
+    {
+      "target": ".mobile-toggle path",
+      "property": "d",
+      "from": "hamburger",
+      "to": "variant",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "icon.mismatch",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1,
+    "similarity_max": 0.995
+  },
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 720,
+      "device_scale_factor": 1
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "device_scale_factor": 2
+    }
+  ],
+  "assertions_by_viewport": {
+    "desktop": {
+      "pixel_regions_min": 0,
+      "similarity_max": 1.0
+    },
+    "mobile": {
+      "pixel_regions_min": 1,
+      "similarity_max": 0.995
+    }
+  }
+}

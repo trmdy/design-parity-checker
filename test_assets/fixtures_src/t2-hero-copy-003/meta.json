@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-hero-copy-003",
+  "title": "Hero subtitle copy change",
+  "category": [
+    "copy"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".hero-subtitle",
+      "property": "text",
+      "from": "Compare pixel differences and find issues in seconds, not hours.",
+      "to": "Find spacing regressions before they ship.",
+      "delta": "medium"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "copy.mismatch",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "content_score_max": 0.95
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

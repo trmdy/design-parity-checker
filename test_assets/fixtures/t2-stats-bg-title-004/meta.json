@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-stats-bg-title-004",
+  "title": "Stats background + title size",
+  "category": [
+    "color",
+    "typography"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": "body",
+      "property": "background",
+      "from": "#f8fafc",
+      "to": "#ecfeff",
+      "delta": "small"
+    },
+    {
+      "target": ".stat strong",
+      "property": "font-size",
+      "from": "30px",
+      "to": "31px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "color.background",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "color_diffs_min": 1,
+    "color_score_max": 0.9995,
+    "typography_score_max": 0.999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

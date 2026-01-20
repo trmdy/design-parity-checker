@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "hero-typography-001",
+  "title": "Hero H1 size + weight change",
+  "category": [
+    "typography"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": "h1.hero-title",
+      "property": "font-size",
+      "from": "64px",
+      "to": "56px",
+      "delta": "small"
+    },
+    {
+      "target": "h1.hero-title",
+      "property": "font-weight",
+      "from": "700",
+      "to": "600",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.size",
+      "severity": "low"
+    },
+    {
+      "label": "typography.weight",
+      "severity": "low"
+    }
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  },
+  "notes": "Single change, safe crop-free."
+}

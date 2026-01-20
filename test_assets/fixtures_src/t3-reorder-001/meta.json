@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t3-reorder-001",
+  "title": "Tile reorder in grid",
+  "category": [
+    "layout",
+    "alignment"
+  ],
+  "complexity": "high",
+  "mutations": [
+    {
+      "target": ".tile",
+      "property": "order",
+      "from": "0-5",
+      "to": "2-0-1-3-4-5",
+      "delta": "large"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "layout.order",
+      "severity": "high"
+    }
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

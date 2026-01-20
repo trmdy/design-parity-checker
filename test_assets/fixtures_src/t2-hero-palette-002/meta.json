@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-hero-palette-002",
+  "title": "Hero background + accent shift",
+  "category": [
+    "color"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": "body",
+      "property": "background",
+      "from": "#f6f4ef",
+      "to": "#fff7ed",
+      "delta": "small"
+    },
+    {
+      "target": ".hero-pill",
+      "property": "background",
+      "from": "#c66a2b",
+      "to": "#ea580c",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "color.background",
+      "severity": "low"
+    },
+    {
+      "label": "color.accent",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "color_diffs_min": 1,
+    "color_score_max": 0.9995
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

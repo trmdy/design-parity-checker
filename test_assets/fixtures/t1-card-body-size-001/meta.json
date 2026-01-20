@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-card-body-size-001",
+  "title": "Card body text size change",
+  "category": [
+    "typography"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".card p",
+      "property": "font-size",
+      "from": "16px",
+      "to": "15px",
+      "delta": "tiny"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.size",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "typography_score_max": 0.9999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

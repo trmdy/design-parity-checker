@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-hero-cta-padding-003",
+  "title": "Hero CTA padding change",
+  "category": [
+    "spacing",
+    "component"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": "button.hero-cta",
+      "property": "padding",
+      "from": "12px 20px",
+      "to": "14px 20px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "spacing.padding",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

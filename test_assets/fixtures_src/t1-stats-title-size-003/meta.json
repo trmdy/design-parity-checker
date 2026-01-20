@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-stats-title-size-003",
+  "title": "Stats title size change",
+  "category": [
+    "typography"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".stat strong",
+      "property": "font-size",
+      "from": "30px",
+      "to": "32px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.size",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "typography_score_max": 0.999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

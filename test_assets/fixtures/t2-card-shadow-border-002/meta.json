@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-card-shadow-border-002",
+  "title": "Card shadow + border change",
+  "category": [
+    "color",
+    "component"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".card",
+      "property": "box-shadow",
+      "from": "0 18px 40px rgba(15,23,42,0.12)",
+      "to": "0 24px 48px rgba(15,23,42,0.2)",
+      "delta": "small"
+    },
+    {
+      "target": ".card",
+      "property": "border-color",
+      "from": "#d6dbe5",
+      "to": "#bfc6d3",
+      "delta": "tiny"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "shadow.intensity",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "color_diffs_min": 1,
+    "color_score_max": 0.9995
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

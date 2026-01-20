@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-grid-cols-gap-004",
+  "title": "Grid columns + gap change",
+  "category": [
+    "layout",
+    "spacing"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".grid",
+      "property": "grid-template-columns",
+      "from": "repeat(3, 1fr)",
+      "to": "repeat(2, 1fr)",
+      "delta": "medium"
+    },
+    {
+      "target": ".grid",
+      "property": "gap",
+      "from": "20px",
+      "to": "32px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "layout.structure",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

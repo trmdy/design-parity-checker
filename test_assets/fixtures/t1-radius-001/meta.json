@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-radius-001",
+  "title": "Card radius change",
+  "category": [
+    "spacing",
+    "component"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".card",
+      "property": "border-radius",
+      "from": "22px",
+      "to": "14px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "shape.radius",
+      "severity": "medium"
+    }
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

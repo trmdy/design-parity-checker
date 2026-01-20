@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Card</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #f4f7fb;
+      color: #0f172a;
+    }
+    .frame {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 56px;
+    }
+    .card {
+      width: 520px;
+      background: #ffffff;
+      border: 1px solid #d6dbe5;
+      border-radius: 14px;
+      padding: 32px;
+      box-shadow: 0 18px 40px rgba(15,23,42,0.12);
+    }
+    h2 {
+      margin: 0 0 12px 0;
+      font-size: 28px;
+      letter-spacing: -0.3px;
+    }
+    p {
+      margin: 0 0 20px 0;
+      font-size: 16px;
+      color: #475569;
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .action {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid #0f172a;
+      background: white;
+      font-weight: 600;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="card">
+      <span class="badge">Diff Review</span>
+      <h2>Sync issue backlog</h2>
+      <p>Queue visual mismatches and resolve the top offenders first.</p>
+      <button class="action">View queue</button>
+    </div>
+  </div>
+</body>
+</html>

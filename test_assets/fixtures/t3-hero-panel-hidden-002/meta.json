@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t3-hero-panel-hidden-002",
+  "title": "Panel hidden variant",
+  "category": [
+    "layout",
+    "component"
+  ],
+  "complexity": "high",
+  "mutations": [
+    {
+      "target": ".panel",
+      "property": "display",
+      "from": "block",
+      "to": "none",
+      "delta": "large"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "layout.missing_element",
+      "severity": "high"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1,
+    "similarity_max": 0.995
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

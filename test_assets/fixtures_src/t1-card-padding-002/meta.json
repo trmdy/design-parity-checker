@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-card-padding-002",
+  "title": "Card padding change",
+  "category": [
+    "spacing",
+    "component"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".card",
+      "property": "padding",
+      "from": "32px",
+      "to": "30px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "spacing.padding",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

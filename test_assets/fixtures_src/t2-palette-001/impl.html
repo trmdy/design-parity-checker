@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hero</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --ink: #141414;
+      --accent: #f97316;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .frame {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 64px;
+    }
+    .hero {
+      width: 100%;
+      max-width: 1040px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .hero-title {
+      font-size: 64px;
+      line-height: 1.05;
+      font-weight: 700;
+      margin: 0 0 16px 0;
+      letter-spacing: -0.5px;
+    }
+    .hero-subtitle {
+      font-size: 20px;
+      line-height: 1.5;
+      margin: 0 0 24px 0;
+      color: #3a3a3a;
+    }
+    .hero-pill {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 20px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: white;
+      border: none;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .panel {
+      padding: 28px;
+      border-radius: 16px;
+      border: 1px solid #e3ddd2;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      background: white;
+    }
+    .panel-stat {
+      font-size: 40px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .panel-label {
+      color: #6b5f55;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 1.2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <section class="hero">
+      <div>
+        <span class="hero-pill">Spring Release</span>
+        <h1 class="hero-title">Design parity, faster.</h1>
+        <p class="hero-subtitle">
+          Compare pixel differences and find issues in seconds, not hours.
+        </p>
+        <button class="hero-cta">Start a review</button>
+      </div>
+      <aside class="panel">
+        <div class="panel-stat">98%</div>
+        <div class="panel-label">Match accuracy</div>
+      </aside>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nav</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 40px;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    nav {
+      display: flex;
+      gap: 24px;
+    }
+    .cta {
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .mobile-toggle {
+      display: none;
+    }
+    @media (max-width: 720px) {
+      nav { display: none; }
+      .mobile-toggle { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">DPC</div>
+    <nav>
+      <span>Docs</span>
+      <span>Pricing</span>
+      <span>Cases</span>
+      <span class="cta">Launch</span>
+    </nav>
+    <svg class="mobile-toggle" width="28" height="28" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path class="desktop-path" d="M3 6h18M3 12h18M3 18h18"></path>
+      <path class="mobile-path" d="M6 6l12 12M6 18L18 6"></path>
+    </svg>
+  </header>
+</body>
+</html>

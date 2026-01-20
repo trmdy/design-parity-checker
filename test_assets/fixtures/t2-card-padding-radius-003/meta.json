@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-card-padding-radius-003",
+  "title": "Card padding + radius change",
+  "category": [
+    "spacing",
+    "shape"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".card",
+      "property": "padding",
+      "from": "32px",
+      "to": "40px",
+      "delta": "small"
+    },
+    {
+      "target": ".card",
+      "property": "border-radius",
+      "from": "22px",
+      "to": "20px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "spacing.padding",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

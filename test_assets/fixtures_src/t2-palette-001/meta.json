@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-palette-001",
+  "title": "Accent + background palette shift",
+  "category": [
+    "color"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": "body",
+      "property": "background",
+      "from": "#f6f4ef",
+      "to": "#f1f5f9",
+      "delta": "small"
+    },
+    {
+      "target": ".hero-pill",
+      "property": "background",
+      "from": "#c66a2b",
+      "to": "#f97316",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "color.background",
+      "severity": "low"
+    },
+    {
+      "label": "color.accent",
+      "severity": "low"
+    }
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

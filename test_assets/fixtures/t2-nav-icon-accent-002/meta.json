@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-nav-icon-accent-002",
+  "title": "Nav icon + accent change",
+  "category": [
+    "icon",
+    "color"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".mobile-toggle path",
+      "property": "d",
+      "from": "hamburger",
+      "to": "variant",
+      "delta": "small"
+    },
+    {
+      "target": ".cta",
+      "property": "background",
+      "from": "#38bdf8",
+      "to": "#fbbf24",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "icon.mismatch",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1,
+    "color_diffs_min": 1,
+    "color_score_max": 0.9995
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-typography-spacing-001",
+  "title": "Hero title size + spacing",
+  "category": [
+    "typography",
+    "spacing"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".hero-title",
+      "property": "font-size",
+      "from": "64px",
+      "to": "60px",
+      "delta": "small"
+    },
+    {
+      "target": ".hero-title",
+      "property": "margin-bottom",
+      "from": "16px",
+      "to": "8px",
+      "delta": "small"
+    },
+    {
+      "target": ".hero-title",
+      "property": "line-height",
+      "from": "1.05",
+      "to": "1.1",
+      "delta": "tiny"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.size",
+      "severity": "medium"
+    },
+    {
+      "label": "spacing.vertical",
+      "severity": "low"
+    }
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

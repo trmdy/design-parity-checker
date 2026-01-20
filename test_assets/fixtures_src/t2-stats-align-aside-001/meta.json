@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-stats-align-aside-001",
+  "title": "Stats alignment + aside panel change",
+  "category": [
+    "alignment",
+    "layout"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".layout",
+      "property": "align-items",
+      "from": "center",
+      "to": "flex-start",
+      "delta": "medium"
+    },
+    {
+      "target": ".aside",
+      "property": "background",
+      "from": "#ffffff",
+      "to": "#f1f5f9",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "alignment.vertical",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

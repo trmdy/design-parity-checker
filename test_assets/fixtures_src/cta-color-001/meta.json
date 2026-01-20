@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "cta-color-001",
+  "title": "Primary button fill color shift",
+  "category": [
+    "color",
+    "component"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": "button.hero-cta",
+      "property": "background",
+      "from": "#141414",
+      "to": "#1f2937",
+      "delta": "tiny"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "color.fill",
+      "severity": "low"
+    }
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-card-badge-spacing-001",
+  "title": "Badge letter spacing change",
+  "category": [
+    "typography"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".badge",
+      "property": "letter-spacing",
+      "from": "2px",
+      "to": "1px",
+      "delta": "tiny"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.letter_spacing",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "typography_score_max": 0.9999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

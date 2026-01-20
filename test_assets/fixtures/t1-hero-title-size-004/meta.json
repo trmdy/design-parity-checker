@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-hero-title-size-004",
+  "title": "Hero title size to 56px",
+  "category": [
+    "typography"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".hero-title",
+      "property": "font-size",
+      "from": "64px",
+      "to": "56px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.size",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "typography_score_max": 0.999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

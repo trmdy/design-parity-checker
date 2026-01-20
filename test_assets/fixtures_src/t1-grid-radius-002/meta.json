@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-grid-radius-002",
+  "title": "Grid tile radius change",
+  "category": [
+    "shape",
+    "component"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".tile",
+      "property": "border-radius",
+      "from": "18px",
+      "to": "20px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "shape.radius",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {},
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

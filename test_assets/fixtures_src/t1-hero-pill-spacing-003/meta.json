@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-hero-pill-spacing-003",
+  "title": "Hero pill letter spacing",
+  "category": [
+    "typography"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".hero-pill",
+      "property": "letter-spacing",
+      "from": "1px",
+      "to": "2px",
+      "delta": "tiny"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.letter_spacing",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "typography_score_max": 0.9999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

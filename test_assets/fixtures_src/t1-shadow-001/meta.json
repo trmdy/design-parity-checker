@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-shadow-001",
+  "title": "Shadow opacity change",
+  "category": [
+    "color",
+    "component"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".card",
+      "property": "box-shadow",
+      "from": "rgba(15,23,42,0.12)",
+      "to": "rgba(15,23,42,0.2)",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "shadow.intensity",
+      "severity": "low"
+    }
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

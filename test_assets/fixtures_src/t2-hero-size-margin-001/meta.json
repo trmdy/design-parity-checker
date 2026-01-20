@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t2-hero-size-margin-001",
+  "title": "Hero title size + margin change",
+  "category": [
+    "typography",
+    "spacing"
+  ],
+  "complexity": "medium",
+  "mutations": [
+    {
+      "target": ".hero-title",
+      "property": "font-size",
+      "from": "64px",
+      "to": "60px",
+      "delta": "small"
+    },
+    {
+      "target": ".hero-title",
+      "property": "margin-bottom",
+      "from": "16px",
+      "to": "8px",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.size",
+      "severity": "medium"
+    }
+  ],
+  "assertions": {
+    "pixel_regions_min": 1,
+    "typography_score_max": 0.999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}

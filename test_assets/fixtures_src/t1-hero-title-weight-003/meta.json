@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "assets": {
+    "fonts": [
+      "Helvetica Neue"
+    ],
+    "images": []
+  },
+  "case_id": "t1-hero-title-weight-003",
+  "title": "Hero title weight to 800",
+  "category": [
+    "typography"
+  ],
+  "complexity": "low",
+  "mutations": [
+    {
+      "target": ".hero-title",
+      "property": "font-weight",
+      "from": "700",
+      "to": "800",
+      "delta": "small"
+    }
+  ],
+  "expectations": [
+    {
+      "label": "typography.weight",
+      "severity": "low"
+    }
+  ],
+  "assertions": {
+    "typography_score_max": 0.999
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_scale_factor": 1
+  }
+}
