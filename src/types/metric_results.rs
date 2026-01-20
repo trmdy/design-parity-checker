@@ -203,6 +203,7 @@ pub enum TypographyIssue {
     FontSizeDiff,
     FontWeightDiff,
     LineHeightDiff,
+    LetterSpacingDiff,
 }
 
 // ============================================================================

@@ -9,13 +9,15 @@ use super::{Metric, MetricKind, MetricResult};
 pub struct TypographySimilarity {
     pub size_tolerance: f32,
     pub line_height_tolerance: f32,
+    pub letter_spacing_tolerance: f32,
 }
 
 impl Default for TypographySimilarity {
     fn default() -> Self {
         Self {
-            size_tolerance: 0.1,
-            line_height_tolerance: 0.1,
+            size_tolerance: 0.03,
+            line_height_tolerance: 0.05,
+            letter_spacing_tolerance: 0.02,
         }
     }
 }
@@ -28,6 +30,7 @@ struct TypographyElement {
     size: Option<f32>,
     weight: Option<String>,
     line_height: Option<f32>,
+    letter_spacing: Option<f32>,
 }
 
 impl TypographySimilarity {
@@ -44,6 +47,7 @@ impl TypographySimilarity {
                             size: style.font_size,
                             weight: style.font_weight.clone(),
                             line_height: style.line_height,
+                            letter_spacing: style.letter_spacing,
                         });
                     }
                 }
@@ -64,6 +68,7 @@ impl TypographySimilarity {
                         size: style.font_size,
                         weight: style.font_weight.clone(),
                         line_height: style.line_height,
+                        letter_spacing: style.letter_spacing,
                     });
                 }
             }
@@ -112,6 +117,7 @@ impl TypographySimilarity {
                         &impl_el,
                         self.size_tolerance,
                         self.line_height_tolerance,
+                        self.letter_spacing_tolerance,
                     );
                     total_penalty += penalty;
                     if !issues.is_empty() {
@@ -174,11 +180,13 @@ fn typography_penalty(
     implementation: &TypographyElement,
     size_tolerance: f32,
     line_height_tolerance: f32,
+    letter_spacing_tolerance: f32,
 ) -> (f32, Vec<TypographyIssue>) {
-    const FAMILY_WEIGHT: f32 = 0.6;
+    const FAMILY_WEIGHT: f32 = 0.55;
     const SIZE_WEIGHT: f32 = 0.2;
     const WEIGHT_WEIGHT: f32 = 0.15;
     const LINE_WEIGHT: f32 = 0.05;
+    const LETTER_SPACING_WEIGHT: f32 = 0.05;
 
     let mut penalty = 0.0f32;
     let mut issues = Vec::new();
@@ -214,6 +222,17 @@ fn typography_penalty(
                 penalty += LINE_WEIGHT * diff.min(1.0);
                 issues.push(TypographyIssue::LineHeightDiff);
             }
+        }
+    }
+
+    if let (Some(ref_ls), Some(impl_ls)) =
+        (reference.letter_spacing, implementation.letter_spacing)
+    {
+        let base = reference.size.unwrap_or(0.0).max(1.0);
+        let diff = ((impl_ls - ref_ls) / base).abs();
+        if diff > letter_spacing_tolerance {
+            penalty += LETTER_SPACING_WEIGHT * diff.min(1.0);
+            issues.push(TypographyIssue::LetterSpacingDiff);
         }
     }
 

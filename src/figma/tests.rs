@@ -212,6 +212,7 @@ mod tests {
                         font_size: Some(16.0),
                         font_weight: Some("600".into()),
                         line_height: Some(24.0),
+                        letter_spacing: None,
                     }),
                     fills: vec![],
                     children: vec![],

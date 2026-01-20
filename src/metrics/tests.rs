@@ -1,4 +1,5 @@
 use super::*;
+use crate::image_alignment::ImageAlignmentOptions;
 use crate::types::{
     ColorDiff, ColorDiffKind, ColorMetric, ComputedStyle, ContentMetric, DiffSeverity,
     LayoutDiffKind, LayoutDiffRegion, LayoutMetric, PixelDiffReason, PixelDiffRegion, PixelMetric,
@@ -433,6 +434,37 @@ fn pixel_metric_partial_difference_scores_between_zero_and_one() {
 }
 
 #[test]
+fn pixel_metric_alignment_handles_shifted_images() {
+    let ref_img = patterned_image();
+    let impl_img = shift_image(&ref_img, 2, -1);
+
+    let ref_file = write_image(&ref_img);
+    let impl_file = write_image(&impl_img);
+    let ref_view = view_from_file(ref_file.path(), ref_img.width(), ref_img.height());
+    let impl_view = view_from_file(impl_file.path(), impl_img.width(), impl_img.height());
+
+    let metric_no_align = PixelSimilarity::default();
+    let score_no_align = match metric_no_align.compute(&ref_view, &impl_view).unwrap() {
+        MetricResult::Pixel(p) => p.score,
+        _ => unreachable!(),
+    };
+
+    let mut metric_align = PixelSimilarity::default();
+    metric_align.alignment = ImageAlignmentOptions {
+        enabled: true,
+        max_shift: 4,
+        downscale_max_dim: 64,
+    };
+    let score_align = match metric_align.compute(&ref_view, &impl_view).unwrap() {
+        MetricResult::Pixel(p) => p.score,
+        _ => unreachable!(),
+    };
+
+    assert!(score_align > 0.95);
+    assert!(score_align > score_no_align);
+}
+
+#[test]
 fn layout_metric_partial_match_scores_between_zero_and_one() {
     let ref_view = view_with_dom(vec![
         ("button", bbox(0.0, 0.0, 0.5, 0.5)),
@@ -541,6 +573,7 @@ fn typography_metric_identical_text_scores_one() {
             font_size: Some(16.0),
             font_weight: Some("400".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let impl_view = ref_view.clone();
@@ -561,6 +594,7 @@ fn typography_metric_weight_difference_penalized() {
             font_size: Some(16.0),
             font_weight: Some("400".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let impl_view = view_with_text(
@@ -570,6 +604,7 @@ fn typography_metric_weight_difference_penalized() {
             font_size: Some(16.0),
             font_weight: Some("700".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let metric = TypographySimilarity::default();
@@ -589,6 +624,7 @@ fn typography_metric_font_family_mismatch_penalized() {
             font_size: Some(16.0),
             font_weight: Some("400".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let impl_view = view_with_text(
@@ -598,6 +634,7 @@ fn typography_metric_font_family_mismatch_penalized() {
             font_size: Some(16.0),
             font_weight: Some("400".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let metric = TypographySimilarity::default();
@@ -617,6 +654,7 @@ fn typography_metric_line_height_mismatch_penalized() {
             font_size: Some(16.0),
             font_weight: Some("400".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let impl_view = view_with_text(
@@ -626,6 +664,7 @@ fn typography_metric_line_height_mismatch_penalized() {
             font_size: Some(16.0),
             font_weight: Some("400".into()),
             line_height: Some(18.0),
+            letter_spacing: None,
         },
     );
     let metric = TypographySimilarity::default();
@@ -647,6 +686,7 @@ fn typography_metric_small_size_difference_within_tolerance_scores_high() {
             font_size: Some(16.0),
             font_weight: Some("400".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let impl_view = view_with_text(
@@ -656,6 +696,7 @@ fn typography_metric_small_size_difference_within_tolerance_scores_high() {
             font_size: Some(15.0),
             font_weight: Some("400".into()),
             line_height: Some(24.0),
+            letter_spacing: None,
         },
     );
     let score = match metric.compute(&ref_view, &impl_view).unwrap() {
@@ -847,6 +888,42 @@ fn solid_split_image(left: Rgba<u8>, right: Rgba<u8>) -> NamedTempFile {
     img.save_with_format(file.path(), ImageFormat::Png)
         .expect("write split image");
     file
+}
+
+fn write_image(img: &RgbaImage) -> NamedTempFile {
+    let file = tempfile::Builder::new()
+        .suffix(".png")
+        .tempfile()
+        .expect("temp file");
+    img.save_with_format(file.path(), ImageFormat::Png)
+        .expect("write image");
+    file
+}
+
+fn patterned_image() -> RgbaImage {
+    let mut img = RgbaImage::from_pixel(20, 20, Rgba([255, 255, 255, 255]));
+    for y in 6..14 {
+        for x in 6..14 {
+            img.put_pixel(x, y, Rgba([0, 0, 0, 255]));
+        }
+    }
+    img
+}
+
+fn shift_image(img: &RgbaImage, dx: i32, dy: i32) -> RgbaImage {
+    let (w, h) = img.dimensions();
+    let mut shifted = RgbaImage::from_pixel(w, h, Rgba([255, 255, 255, 255]));
+    for y in 0..h as i32 {
+        for x in 0..w as i32 {
+            let src_x = x - dx;
+            let src_y = y - dy;
+            if src_x >= 0 && src_x < w as i32 && src_y >= 0 && src_y < h as i32 {
+                let pixel = img.get_pixel(src_x as u32, src_y as u32);
+                shifted.put_pixel(x as u32, y as u32, *pixel);
+            }
+        }
+    }
+    shifted
 }
 
 fn bbox(x: f32, y: f32, width: f32, height: f32) -> crate::types::BoundingBox {

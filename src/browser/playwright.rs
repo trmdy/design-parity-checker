@@ -11,7 +11,7 @@ use tokio::process::Command;
 
 /// Basic Playwright script for screenshot capture.
 pub(crate) const PLAYWRIGHT_SCRIPT: &str = r#"
-const [, , url, width, height, navTimeout, idleTimeout, screenshotPath, headlessFlag] = process.argv;
+const [, url, width, height, navTimeout, idleTimeout, screenshotPath, headlessFlag] = process.argv;
 
 async function run() {
   let browser;
@@ -52,7 +52,7 @@ run();
 
 /// Playwright script that captures both screenshot and DOM snapshot.
 pub(crate) const PLAYWRIGHT_SCRIPT_WITH_DOM: &str = r#"
-const [, , url, width, height, navTimeout, idleTimeout, screenshotPath, headlessFlag] = process.argv;
+const [, url, width, height, navTimeout, idleTimeout, screenshotPath, headlessFlag] = process.argv;
 
 async function run() {
   let browser;
@@ -84,11 +84,13 @@ async function run() {
 
       function getComputedStyleInfo(el) {
         const style = window.getComputedStyle(el);
+        const letterSpacing = parseFloat(style.letterSpacing);
         return {
           fontFamily: style.fontFamily || null,
           fontSize: parseFloat(style.fontSize) || null,
           fontWeight: style.fontWeight || null,
           lineHeight: parseFloat(style.lineHeight) || null,
+          letterSpacing: Number.isNaN(letterSpacing) ? null : letterSpacing,
           color: style.color || null,
           backgroundColor: style.backgroundColor || null,
           display: style.display || null,

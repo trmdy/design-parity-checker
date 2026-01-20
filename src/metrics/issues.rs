@@ -210,6 +210,7 @@ fn issues_from_typography(metric: &TypographyMetric) -> Vec<RankedIssue> {
                 TypographyIssue::FontSizeDiff => "font size",
                 TypographyIssue::FontWeightDiff => "font weight",
                 TypographyIssue::LineHeightDiff => "line height",
+                TypographyIssue::LetterSpacingDiff => "letter spacing",
             })
             .collect();
 
@@ -230,6 +231,7 @@ fn issues_from_typography(metric: &TypographyMetric) -> Vec<RankedIssue> {
             RankedIssue::major(PRIORITY_TYPOGRAPHY, msg)
         } else if diff.issues.contains(&TypographyIssue::FontSizeDiff)
             || diff.issues.contains(&TypographyIssue::FontWeightDiff)
+            || diff.issues.contains(&TypographyIssue::LetterSpacingDiff)
         {
             RankedIssue::moderate(PRIORITY_TYPOGRAPHY, msg)
         } else {

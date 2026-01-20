@@ -45,6 +45,7 @@ pub fn map_typography(style: &FigmaTypeStyle) -> TypographyStyle {
         font_size: style.font_size,
         font_weight: style.font_weight.map(|w| w.to_string()),
         line_height: style.line_height_px,
+        letter_spacing: None,
     }
 }
 

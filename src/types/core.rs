@@ -71,6 +71,7 @@ pub struct TypographyStyle {
     pub font_size: Option<f32>,
     pub font_weight: Option<String>,
     pub line_height: Option<f32>,
+    pub letter_spacing: Option<f32>,
 }
 
 /// A text block extracted via OCR.

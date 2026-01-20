@@ -120,12 +120,7 @@ impl LayoutSimilarity {
         let mut matches = Vec::new();
 
         for ref_el in &ref_elements {
-            if let Some((idx, iou)) = best_match(
-                ref_el,
-                &impl_elements,
-                self.match_threshold,
-                self.iou_threshold,
-            ) {
+            if let Some((idx, iou)) = best_match(ref_el, &impl_elements, self.match_threshold) {
                 matches.push((ref_el, impl_elements[idx], iou));
                 impl_elements.remove(idx);
             }
@@ -175,8 +170,9 @@ impl LayoutSimilarity {
             });
         }
 
-        for (_, impl_el, iou) in &matches {
-            if *iou < self.iou_threshold {
+        for (ref_el, impl_el, iou) in &matches {
+            let (pos_shift, size_change) = layout_deviations(ref_el.bbox, impl_el.bbox);
+            if *iou < self.iou_threshold || pos_shift {
                 diff_regions.push(LayoutDiffRegion {
                     x: impl_el.bbox.x,
                     y: impl_el.bbox.y,
@@ -187,18 +183,17 @@ impl LayoutSimilarity {
                     label: None,
                 });
             }
-        }
-
-        for impl_el in &impl_elements {
-            diff_regions.push(LayoutDiffRegion {
-                x: impl_el.bbox.x,
-                y: impl_el.bbox.y,
-                width: impl_el.bbox.width,
-                height: impl_el.bbox.height,
-                kind: LayoutDiffKind::ExtraElement,
-                element_type: Some(impl_el.kind.as_str().to_string()),
-                label: None,
-            });
+            if size_change {
+                diff_regions.push(LayoutDiffRegion {
+                    x: impl_el.bbox.x,
+                    y: impl_el.bbox.y,
+                    width: impl_el.bbox.width,
+                    height: impl_el.bbox.height,
+                    kind: LayoutDiffKind::SizeChange,
+                    element_type: Some(impl_el.kind.as_str().to_string()),
+                    label: None,
+                });
+            }
         }
 
         Ok(LayoutMetric {
@@ -261,7 +256,6 @@ fn best_match(
     target: &LayoutElement,
     candidates: &[LayoutElement],
     match_threshold: f32,
-    iou_threshold: f32,
 ) -> Option<(usize, f32)> {
     let mut best: Option<(usize, f32)> = None;
     for (idx, cand) in candidates.iter().enumerate() {
@@ -277,7 +271,27 @@ fn best_match(
         }
     }
 
-    best.filter(|(_, score)| *score >= iou_threshold)
+    best
+}
+
+fn layout_deviations(reference: BoundingBox, implementation: BoundingBox) -> (bool, bool) {
+    let ref_cx = reference.x + reference.width / 2.0;
+    let ref_cy = reference.y + reference.height / 2.0;
+    let impl_cx = implementation.x + implementation.width / 2.0;
+    let impl_cy = implementation.y + implementation.height / 2.0;
+
+    let pos_threshold_x = reference.width.max(1.0) * 0.1;
+    let pos_threshold_y = reference.height.max(1.0) * 0.1;
+    let pos_shift = (impl_cx - ref_cx).abs() > pos_threshold_x
+        || (impl_cy - ref_cy).abs() > pos_threshold_y;
+
+    let size_diff_w =
+        ((implementation.width - reference.width) / reference.width.max(1.0)).abs();
+    let size_diff_h =
+        ((implementation.height - reference.height) / reference.height.max(1.0)).abs();
+    let size_change = size_diff_w > 0.1 || size_diff_h > 0.1;
+
+    (pos_shift, size_change)
 }
 
 impl Metric for LayoutSimilarity {

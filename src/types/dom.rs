@@ -54,6 +54,7 @@ pub struct ComputedStyle {
     pub font_size: Option<f32>,
     pub font_weight: Option<String>,
     pub line_height: Option<f32>,
+    pub letter_spacing: Option<f32>,
     pub color: Option<String>,
     pub background_color: Option<String>,
     pub display: Option<String>,
