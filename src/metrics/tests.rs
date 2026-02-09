@@ -430,7 +430,58 @@ fn pixel_metric_partial_difference_scores_between_zero_and_one() {
         MetricResult::Pixel(p) => p.score,
         _ => unreachable!(),
     };
-    assert!(score > 0.0 && score < 1.0);
+    assert!((0.0..1.0).contains(&score));
+}
+
+#[test]
+fn pixel_metric_penalizes_large_localized_difference_on_shared_background() {
+    let mut ref_img = RgbaImage::from_pixel(200, 120, Rgba([240, 240, 240, 255]));
+    let impl_img = RgbaImage::from_pixel(200, 120, Rgba([240, 240, 240, 255]));
+
+    for y in 30..95 {
+        for x in 55..145 {
+            ref_img.put_pixel(x, y, Rgba([20, 20, 20, 255]));
+        }
+    }
+
+    let ref_file = write_image(&ref_img);
+    let impl_file = write_image(&impl_img);
+    let ref_view = view_from_file(ref_file.path(), ref_img.width(), ref_img.height());
+    let impl_view = view_from_file(impl_file.path(), impl_img.width(), impl_img.height());
+
+    let metric = PixelSimilarity::default();
+    let score = match metric.compute(&ref_view, &impl_view).unwrap() {
+        MetricResult::Pixel(p) => p.score,
+        _ => unreachable!(),
+    };
+
+    assert!(
+        score < 0.95,
+        "large missing foreground region on same background should not score too high: {score}"
+    );
+}
+
+#[test]
+fn pixel_metric_keeps_tiny_localized_difference_high() {
+    let ref_img = RgbaImage::from_pixel(200, 120, Rgba([240, 240, 240, 255]));
+    let mut impl_img = ref_img.clone();
+    impl_img.put_pixel(100, 60, Rgba([20, 20, 20, 255]));
+
+    let ref_file = write_image(&ref_img);
+    let impl_file = write_image(&impl_img);
+    let ref_view = view_from_file(ref_file.path(), ref_img.width(), ref_img.height());
+    let impl_view = view_from_file(impl_file.path(), impl_img.width(), impl_img.height());
+
+    let metric = PixelSimilarity::default();
+    let score = match metric.compute(&ref_view, &impl_view).unwrap() {
+        MetricResult::Pixel(p) => p.score,
+        _ => unreachable!(),
+    };
+
+    assert!(
+        score > 0.95,
+        "single-pixel mismatch should remain high-confidence: {score}"
+    );
 }
 
 #[test]
@@ -995,6 +1046,7 @@ fn view_with_text(text: &str, style: TypographyStyle) -> NormalizedView {
                     font_size: style.font_size,
                     font_weight: style.font_weight.clone(),
                     line_height: style.line_height,
+                    letter_spacing: None,
                     color: None,
                     background_color: None,
                     display: None,

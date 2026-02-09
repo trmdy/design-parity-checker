@@ -5,7 +5,9 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use dpc_lib::output::DPC_OUTPUT_VERSION;
-use dpc_lib::types::{BoundingBox, DomNode, FigmaNode, FigmaPaintKind, NormalizedView, ResourceKind};
+use dpc_lib::types::{
+    BoundingBox, DomNode, FigmaNode, FigmaPaintKind, NormalizedView, ResourceKind,
+};
 use dpc_lib::QualityFindingType;
 use dpc_lib::{
     parse_resource, DpcError, DpcOutput, FindingSeverity, QualityFinding, QualityOutput,
@@ -394,11 +396,7 @@ fn collect_font_sizes(view: &NormalizedView) -> Vec<f32> {
 
     if let Some(figma) = &view.figma_tree {
         for node in figma.nodes.iter().filter(|n| figma_has_text(n)) {
-            if let Some(size) = node
-                .typography
-                .as_ref()
-                .and_then(|style| style.font_size)
-            {
+            if let Some(size) = node.typography.as_ref().and_then(|style| style.font_size) {
                 sizes.push(size);
             }
         }
@@ -416,10 +414,7 @@ fn contrast_heuristic(view: &NormalizedView) -> (Option<f32>, QualityFinding) {
                 QualityFinding {
                     severity: FindingSeverity::Info,
                     finding_type: QualityFindingType::LowContrast,
-                    message: format!(
-                        "Could not read screenshot for contrast heuristic: {}",
-                        err
-                    ),
+                    message: format!("Could not read screenshot for contrast heuristic: {}", err),
                 },
             )
         }
@@ -463,7 +458,8 @@ fn contrast_heuristic(view: &NormalizedView) -> (Option<f32>, QualityFinding) {
         .fold(f32::INFINITY, f32::min)
         .max(0.0);
 
-    let contrast_score = (ratios.len().saturating_sub(low) as f32 / ratios.len() as f32).clamp(0.0, 1.0);
+    let contrast_score =
+        (ratios.len().saturating_sub(low) as f32 / ratios.len() as f32).clamp(0.0, 1.0);
     let severity = if low >= 3 || worst < 3.0 {
         FindingSeverity::Warning
     } else {
@@ -487,11 +483,7 @@ fn contrast_heuristic(view: &NormalizedView) -> (Option<f32>, QualityFinding) {
     )
 }
 
-fn contrast_for_dom_node(
-    node: &DomNode,
-    img: &DynamicImage,
-    view: &NormalizedView,
-) -> Option<f32> {
+fn contrast_for_dom_node(node: &DomNode, img: &DynamicImage, view: &NormalizedView) -> Option<f32> {
     let style = node.computed_style.as_ref()?;
     let text = style
         .color
@@ -525,15 +517,12 @@ fn contrast_for_figma_node(
         .iter()
         .find(|p| p.kind == FigmaPaintKind::Solid)
         .and_then(|p| {
-            p.color
-                .as_deref()
-                .and_then(parse_css_color)
-                .map(|mut c| {
-                    if let Some(opacity) = p.opacity {
-                        c[3] *= opacity;
-                    }
-                    c
-                })
+            p.color.as_deref().and_then(parse_css_color).map(|mut c| {
+                if let Some(opacity) = p.opacity {
+                    c[3] *= opacity;
+                }
+                c
+            })
         })
         .filter(|c| c[3] >= 0.05)?;
 
@@ -715,7 +704,12 @@ fn bbox_to_pixels(
     if x1 <= x0 || y1 <= y0 {
         None
     } else {
-        Some((x0.min(view_width - 1), y0.min(view_height - 1), x1 - x0, y1 - y0))
+        Some((
+            x0.min(view_width - 1),
+            y0.min(view_height - 1),
+            x1 - x0,
+            y1 - y0,
+        ))
     }
 }
 
@@ -794,16 +788,8 @@ fn evaluate_spacing(gaps: &[f32]) -> Option<(QualityFinding, f32)> {
         0.0
     };
 
-    let min_gap = gaps
-        .iter()
-        .copied()
-        .fold(f32::INFINITY, f32::min)
-        .min(1.0);
-    let max_gap = gaps
-        .iter()
-        .copied()
-        .fold(0.0f32, f32::max)
-        .min(1.0);
+    let min_gap = gaps.iter().copied().fold(f32::INFINITY, f32::min).min(1.0);
+    let max_gap = gaps.iter().copied().fold(0.0f32, f32::max).min(1.0);
 
     let penalty = (0.05 + outlier_ratio * 0.1).min(0.15);
     let finding = QualityFinding {
@@ -906,7 +892,13 @@ mod tests {
             },
         ]);
 
-        let (_score, findings) = score_quality(&view, &Viewport { width: 800, height: 600 });
+        let (_score, findings) = score_quality(
+            &view,
+            &Viewport {
+                width: 800,
+                height: 600,
+            },
+        );
         assert!(
             findings
                 .iter()
@@ -944,7 +936,13 @@ mod tests {
             },
         ]);
 
-        let (_score, findings) = score_quality(&view, &Viewport { width: 800, height: 600 });
+        let (_score, findings) = score_quality(
+            &view,
+            &Viewport {
+                width: 800,
+                height: 600,
+            },
+        );
         assert!(
             !findings
                 .iter()
@@ -997,10 +995,20 @@ mod tests {
         let tiered = view_with_font_sizes(&[32.0, 20.0, 16.0]);
         let flat = view_with_font_sizes(&[16.0, 16.0, 16.0]);
 
-        let (tiered_score, tiered_findings) =
-            score_quality(&tiered, &Viewport { width: 800, height: 600 });
-        let (flat_score, flat_findings) =
-            score_quality(&flat, &Viewport { width: 800, height: 600 });
+        let (tiered_score, tiered_findings) = score_quality(
+            &tiered,
+            &Viewport {
+                width: 800,
+                height: 600,
+            },
+        );
+        let (flat_score, flat_findings) = score_quality(
+            &flat,
+            &Viewport {
+                width: 800,
+                height: 600,
+            },
+        );
 
         assert!(
             tiered_score > flat_score,
@@ -1008,10 +1016,8 @@ mod tests {
         );
         assert!(
             flat_findings.iter().any(|f| {
-                matches!(
-                    f.finding_type,
-                    QualityFindingType::MissingHierarchy
-                ) && matches!(f.severity, FindingSeverity::Warning)
+                matches!(f.finding_type, QualityFindingType::MissingHierarchy)
+                    && matches!(f.severity, FindingSeverity::Warning)
             }),
             "flat hierarchy should trigger a missing_hierarchy warning"
         );
@@ -1051,6 +1057,7 @@ mod tests {
                 font_size: None,
                 font_weight: None,
                 line_height: None,
+                letter_spacing: None,
                 color: Some("rgb(210, 210, 210)".to_string()),
                 background_color: None,
                 display: None,
@@ -1073,7 +1080,13 @@ mod tests {
             ocr_blocks: None,
         };
 
-        let (_score, findings) = score_quality(&view, &Viewport { width: 120, height: 80 });
+        let (_score, findings) = score_quality(
+            &view,
+            &Viewport {
+                width: 120,
+                height: 80,
+            },
+        );
         let finding = findings
             .iter()
             .find(|f| matches!(f.finding_type, QualityFindingType::LowContrast))
@@ -1118,6 +1131,7 @@ mod tests {
                 font_size: None,
                 font_weight: None,
                 line_height: None,
+                letter_spacing: None,
                 color: Some("rgb(30, 30, 30)".to_string()),
                 background_color: None,
                 display: None,
@@ -1140,7 +1154,13 @@ mod tests {
             ocr_blocks: None,
         };
 
-        let (_score, findings) = score_quality(&view, &Viewport { width: 100, height: 60 });
+        let (_score, findings) = score_quality(
+            &view,
+            &Viewport {
+                width: 100,
+                height: 60,
+            },
+        );
         let finding = findings
             .iter()
             .find(|f| matches!(f.finding_type, QualityFindingType::LowContrast))

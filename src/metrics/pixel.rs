@@ -31,6 +31,9 @@ pub struct PixelSimilarity {
     pub thresholds: PixelDiffThresholds,
     pub clustering: ClusteringConfig,
     pub alignment: ImageAlignmentOptions,
+    pub coverage_penalty_threshold: f32,
+    pub coverage_penalty_scale: f32,
+    pub coverage_penalty_max: f32,
 }
 
 impl Default for PixelSimilarity {
@@ -40,6 +43,9 @@ impl Default for PixelSimilarity {
             thresholds: PixelDiffThresholds::default(),
             clustering: ClusteringConfig::default(),
             alignment: ImageAlignmentOptions::default(),
+            coverage_penalty_threshold: 0.02,
+            coverage_penalty_scale: 0.25,
+            coverage_penalty_max: 0.30,
         }
     }
 }
@@ -65,8 +71,15 @@ impl PixelSimilarity {
         let ref_luma = ref_img.to_luma8();
         let impl_luma = impl_img.to_luma8();
 
-        let score = compute_ssim(&ref_luma, &impl_luma);
         let diff_map = compute_diff_map(&ref_luma, &impl_luma);
+        let ssim = compute_ssim(&ref_luma, &impl_luma);
+        let coverage_penalty = compute_coverage_penalty(
+            &diff_map,
+            self.coverage_penalty_threshold,
+            self.coverage_penalty_scale,
+            self.coverage_penalty_max,
+        );
+        let score = (ssim - coverage_penalty).clamp(0.0, 1.0);
         let raw_regions = cluster_diff_regions(
             &diff_map,
             ref_luma.width(),
@@ -154,6 +167,21 @@ fn compute_diff_map(ref_luma: &image::GrayImage, impl_luma: &image::GrayImage) -
     }
 
     diffs
+}
+
+fn compute_coverage_penalty(diff_map: &[f32], threshold: f32, scale: f32, max_penalty: f32) -> f32 {
+    if diff_map.is_empty() || scale <= 0.0 || max_penalty <= 0.0 {
+        return 0.0;
+    }
+
+    let threshold = threshold.clamp(0.0, 1.0);
+    let changed = diff_map.iter().filter(|d| **d >= threshold).count();
+    if changed == 0 {
+        return 0.0;
+    }
+
+    let ratio = changed as f32 / diff_map.len() as f32;
+    (scale * ratio.sqrt()).min(max_penalty)
 }
 
 pub fn cluster_diff_regions(
