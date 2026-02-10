@@ -45,6 +45,7 @@ pub struct ResolvedCompareSettings {
 }
 
 /// Merge CLI arguments with config file, preferring CLI when flags are present.
+#[allow(clippy::too_many_arguments)]
 pub fn resolve_compare_settings(
     cli_viewport: Viewport,
     cli_threshold: f64,
@@ -124,6 +125,7 @@ pub fn load_config(path: Option<&Path>) -> Result<Config, DpcError> {
 }
 
 /// Log effective config to stderr (verbose mode).
+#[allow(clippy::too_many_arguments)]
 pub fn log_effective_config(
     config_path: Option<&Path>,
     viewport: &Viewport,
@@ -158,6 +160,7 @@ pub fn log_effective_config(
 }
 
 /// Format effective config as a single-line string.
+#[allow(clippy::too_many_arguments)]
 pub fn format_effective_config(
     viewport: &Viewport,
     threshold: f64,

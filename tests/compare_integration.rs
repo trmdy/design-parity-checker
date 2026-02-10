@@ -309,7 +309,7 @@ fn image_inputs_emit_json_and_pass() {
             assert!(
                 out.summary
                     .as_ref()
-                    .map_or(false, |s| !s.top_issues.is_empty()),
+                    .is_some_and(|s| !s.top_issues.is_empty()),
                 "summary should include top issues"
             );
         }

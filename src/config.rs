@@ -341,8 +341,10 @@ mod tests {
 
     #[test]
     fn validate_rejects_bad_threshold_and_weights() {
-        let mut cfg = Config::default();
-        cfg.threshold = -0.1;
+        let mut cfg = Config {
+            threshold: -0.1,
+            ..Config::default()
+        };
         assert!(cfg.validate().is_err());
 
         cfg.threshold = 0.9;

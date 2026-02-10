@@ -22,6 +22,8 @@ use super::playwright::{
     PLAYWRIGHT_SCRIPT_WITH_DOM,
 };
 
+pub type ProgressCallback = Arc<dyn Fn(&str) + Send + Sync>;
+
 /// Default timeout for page navigation.
 pub const DEFAULT_NAVIGATION_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -251,7 +253,7 @@ pub struct UrlToViewOptions {
     /// Timeout for the entire Playwright process.
     pub process_timeout: Duration,
     /// Optional progress callback for logging.
-    pub progress: Option<Arc<dyn Fn(&str) + Send + Sync>>,
+    pub progress: Option<ProgressCallback>,
 }
 
 impl Default for UrlToViewOptions {
@@ -282,7 +284,7 @@ impl From<BrowserOptions> for UrlToViewOptions {
     }
 }
 
-fn log_progress(progress: &Option<Arc<dyn Fn(&str) + Send + Sync>>, message: &str) {
+fn log_progress(progress: &Option<ProgressCallback>, message: &str) {
     if let Some(cb) = progress {
         cb(message);
     }

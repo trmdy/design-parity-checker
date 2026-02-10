@@ -18,6 +18,7 @@ use image::{DynamicImage, GenericImageView};
 use crate::cli::OutputFormat;
 use crate::formatting::{render_error, write_output};
 use crate::pipeline::{resolve_artifacts_dir, resource_to_normalized_view};
+use crate::progress::ProgressCallback;
 use crate::settings::{flag_present, load_config};
 
 /// Run the quality command.
@@ -65,7 +66,7 @@ pub async fn run_quality(
             artifacts_dir.display()
         );
     }
-    let progress_logger: Option<Arc<dyn Fn(&str) + Send + Sync>> = if verbose {
+    let progress_logger: Option<ProgressCallback> = if verbose {
         Some(Arc::new(|msg: &str| eprintln!("{msg}")))
     } else {
         None
@@ -561,13 +562,13 @@ fn parse_css_color(value: &str) -> Option<[f32; 4]> {
     if let Some(body) = v.strip_prefix("rgba(").or_else(|| v.strip_prefix("rgb(")) {
         let cleaned = body.trim_end_matches(')').replace('/', " ");
         let parts: Vec<_> = cleaned
-            .split(|c| c == ',' || c == ' ')
+            .split(&[',', ' '][..])
             .filter(|p| !p.trim().is_empty())
             .collect();
         if parts.len() < 3 {
             return None;
         }
-        let r: f32 = parts.get(0)?.trim().parse::<f32>().ok()? / 255.0;
+        let r: f32 = parts.first()?.trim().parse::<f32>().ok()? / 255.0;
         let g: f32 = parts.get(1)?.trim().parse::<f32>().ok()? / 255.0;
         let b: f32 = parts.get(2)?.trim().parse::<f32>().ok()? / 255.0;
         let a: f32 = if let Some(alpha) = parts.get(3) {

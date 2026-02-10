@@ -271,10 +271,7 @@ pub fn format_pretty(body: &DpcOutput, colorize: bool) -> String {
         DpcOutput::Error(out) => {
             let mut buf = String::new();
             let header = color("[ERROR]", "31", colorize);
-            let message = out
-                .message
-                .as_deref()
-                .unwrap_or_else(|| out.error.message.as_str());
+            let message = out.message.as_deref().unwrap_or(out.error.message.as_str());
             writeln!(buf, "{} {}", header, message).ok();
             if let Some(remediation) = &out.error.remediation {
                 writeln!(buf, "Hint: {}", remediation).ok();

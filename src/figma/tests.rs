@@ -1,7 +1,7 @@
 //! Tests for Figma conversion and transform logic.
 
 #[cfg(test)]
-mod tests {
+mod figma_tests {
     use crate::figma::api_types::{
         FigmaBoundingBox, FigmaColor, FigmaNodeData, FigmaPaintData, FigmaTypeStyle, ImageFormat,
     };

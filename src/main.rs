@@ -2,6 +2,7 @@ mod cli;
 mod commands;
 mod formatting;
 mod pipeline;
+mod progress;
 mod settings;
 
 use std::process::ExitCode;

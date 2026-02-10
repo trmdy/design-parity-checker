@@ -8,6 +8,7 @@ pub const DPC_OUTPUT_VERSION: &str = "0.2.0";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "kebab-case")]
+#[allow(clippy::large_enum_variant)]
 pub enum DpcOutput {
     Compare(CompareOutput),
     GenerateCode(GenerateCodeOutput),

@@ -17,6 +17,7 @@ use crate::pipeline::{
     parse_ignore_selectors, persist_compare_artifacts, resolve_artifacts_dir,
     resource_to_normalized_view,
 };
+use crate::progress::ProgressCallback;
 use crate::settings::{
     format_effective_config, load_config, log_effective_config, resolve_compare_settings,
     CompareFlagSources,
@@ -133,7 +134,7 @@ pub async fn run_compare(
         return render_error(DpcError::Io(err), format, output.clone());
     }
     let should_keep_artifacts = keep_artifacts || artifacts_from_cli;
-    let progress_logger: Option<Arc<dyn Fn(&str) + Send + Sync>> = if verbose {
+    let progress_logger: Option<ProgressCallback> = if verbose {
         Some(Arc::new(|msg: &str| eprintln!("{msg}")))
     } else {
         None
@@ -222,8 +223,10 @@ pub async fn run_compare(
     if verbose {
         eprintln!("Running metrics: {:?}", effective_metrics);
     }
-    let mut pixel_metric = PixelSimilarity::default();
-    pixel_metric.alignment = pixel_alignment;
+    let pixel_metric = PixelSimilarity {
+        alignment: pixel_alignment,
+        ..PixelSimilarity::default()
+    };
     let all_metrics: Vec<Box<dyn Metric>> = vec![
         Box::new(pixel_metric),
         Box::new(LayoutSimilarity::default()),
@@ -409,16 +412,15 @@ pub async fn run_compare(
                         "Artifacts will be cleaned up; pass --keep-artifacts or --artifacts-dir to retain."
                     );
                 }
-            } else if paths.kept {
-                if paths.diff_image.is_some()
+            } else if paths.kept
+                && (paths.diff_image.is_some()
                     || paths.ref_dom_snapshot.is_some()
-                    || paths.impl_dom_snapshot.is_some()
-                {
-                    eprintln!(
-                        "Hint: view diff heatmap or DOM snapshots in {}",
-                        paths.directory.display()
-                    );
-                }
+                    || paths.impl_dom_snapshot.is_some())
+            {
+                eprintln!(
+                    "Hint: view diff heatmap or DOM snapshots in {}",
+                    paths.directory.display()
+                );
             }
         }
     }

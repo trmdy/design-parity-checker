@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::cli::OutputFormat;
 use crate::formatting::{render_error, write_output};
 use crate::pipeline::{resolve_artifacts_dir, resource_to_normalized_view};
+use crate::progress::ProgressCallback;
 use crate::settings::{flag_present, load_config};
 
 /// Run the generate-code command.
@@ -102,7 +103,7 @@ pub async fn run_generate_code(
             artifacts_dir.display()
         );
     }
-    let progress_logger: Option<Arc<dyn Fn(&str) + Send + Sync>> = if verbose {
+    let progress_logger: Option<ProgressCallback> = if verbose {
         Some(Arc::new(|msg: &str| eprintln!("{msg}")))
     } else {
         None

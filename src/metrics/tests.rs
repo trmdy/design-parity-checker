@@ -500,11 +500,13 @@ fn pixel_metric_alignment_handles_shifted_images() {
         _ => unreachable!(),
     };
 
-    let mut metric_align = PixelSimilarity::default();
-    metric_align.alignment = ImageAlignmentOptions {
-        enabled: true,
-        max_shift: 4,
-        downscale_max_dim: 64,
+    let metric_align = PixelSimilarity {
+        alignment: ImageAlignmentOptions {
+            enabled: true,
+            max_shift: 4,
+            downscale_max_dim: 64,
+        },
+        ..PixelSimilarity::default()
     };
     let score_align = match metric_align.compute(&ref_view, &impl_view).unwrap() {
         MetricResult::Pixel(p) => p.score,
@@ -728,8 +730,10 @@ fn typography_metric_line_height_mismatch_penalized() {
 
 #[test]
 fn typography_metric_small_size_difference_within_tolerance_scores_high() {
-    let mut metric = TypographySimilarity::default();
-    metric.size_tolerance = 0.2;
+    let metric = TypographySimilarity {
+        size_tolerance: 0.2,
+        ..TypographySimilarity::default()
+    };
     let ref_view = view_with_text(
         "Hello",
         TypographyStyle {

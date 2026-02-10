@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use image::{imageops::FilterType, DynamicImage, GenericImageView, RgbaImage};
@@ -16,12 +15,13 @@ use dpc_lib::{
 };
 
 /// Convert a parsed resource to a NormalizedView.
+#[allow(clippy::too_many_arguments)]
 pub async fn resource_to_normalized_view(
     resource: &ParsedResource,
     viewport: &Viewport,
     artifacts_dir: &Path,
     prefix: &str,
-    progress: Option<Arc<dyn Fn(&str) + Send + Sync>>,
+    progress: Option<crate::progress::ProgressCallback>,
     nav_timeout: u64,
     network_idle_timeout: u64,
     process_timeout: u64,
@@ -62,12 +62,14 @@ pub async fn resource_to_normalized_view(
         }
         ResourceKind::Url => {
             let screenshot_path = artifacts_dir.join(format!("{}_screenshot.png", prefix));
-            let mut options = UrlToViewOptions::default();
-            options.viewport = *viewport;
-            options.progress = progress.clone();
-            options.navigation_timeout = Duration::from_secs(nav_timeout);
-            options.network_idle_timeout = Duration::from_secs(network_idle_timeout);
-            options.process_timeout = Duration::from_secs(process_timeout);
+            let options = UrlToViewOptions {
+                viewport: *viewport,
+                progress: progress.clone(),
+                navigation_timeout: Duration::from_secs(nav_timeout),
+                network_idle_timeout: Duration::from_secs(network_idle_timeout),
+                process_timeout: Duration::from_secs(process_timeout),
+                ..UrlToViewOptions::default()
+            };
             let view = url_to_normalized_view(resource.value.as_str(), &screenshot_path, options)
                 .await
                 .map_err(|e| format!("URL rendering failed: {}", e))?;
