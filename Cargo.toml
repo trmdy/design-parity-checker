@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Design Parity Checker - Compare implementations against design references"
 license = "MIT"
-repository = "https://github.com/user/design-parity-checker"
+repository = "https://github.com/tOgg1/design-parity-checker"
 keywords = ["design", "parity", "visual-regression", "figma", "testing"]
 categories = ["command-line-utilities", "development-tools"]
 

@@ -11,6 +11,8 @@ CLI tool to measure how closely an implementation matches a reference design (Fi
 
 ## Install
 ```bash
+brew install trmdy/tap/dpc
+# or from source:
 cargo install --path .
 # For URL rendering: ensure Node is on PATH, then install Playwright + Chromium
 npm install playwright
