@@ -10,9 +10,7 @@ use image::{DynamicImage, GenericImageView};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-use super::clustering::{
-    cluster_regions_image_aware, ClusteredRegion, ImageAwareClusteringConfig,
-};
+use super::clustering::{cluster_regions_image_aware, ClusteredRegion, ImageAwareClusteringConfig};
 use crate::types::PixelDiffRegion;
 
 /// Type of semantic difference detected by vision analysis.
@@ -253,7 +251,14 @@ impl SemanticAnalyzer {
 
         for region in regions_to_analyze {
             match self
-                .analyze_single_region(&ref_img, &impl_img, &ref_full_b64, &impl_full_b64, region, context)
+                .analyze_single_region(
+                    &ref_img,
+                    &impl_img,
+                    &ref_full_b64,
+                    &impl_full_b64,
+                    region,
+                    context,
+                )
                 .await
             {
                 Ok(diff) => results.push(diff),
@@ -310,7 +315,14 @@ impl SemanticAnalyzer {
 
         // Call vision API with both full images and cropped regions
         let analysis = self
-            .call_vision_api(ref_full_b64, impl_full_b64, &ref_crop_b64, &impl_crop_b64, region, context)
+            .call_vision_api(
+                ref_full_b64,
+                impl_full_b64,
+                &ref_crop_b64,
+                &impl_crop_b64,
+                region,
+                context,
+            )
             .await?;
 
         Ok(SemanticDiff {
@@ -360,7 +372,8 @@ impl SemanticAnalyzer {
             .map(|c| format!("\n\nCONTEXT: {}\n", c))
             .unwrap_or_default();
 
-        let prompt = format!(r#"You are a design QA expert comparing a REFERENCE design against an IMPLEMENTATION.{context_section}
+        let prompt = format!(
+            r#"You are a design QA expert comparing a REFERENCE design against an IMPLEMENTATION.{context_section}
 
 I'm providing:
 1. Full REFERENCE image (the design specification)
@@ -389,7 +402,8 @@ Examples of good descriptions:
 - "Border-radius on card corners slightly different (design has 8px, implementation appears 4px)"
 - "Partner logo section: logos arranged in 2 rows instead of 1 horizontal row"
 - "Minor anti-aliasing difference on text edges - no actionable change needed"
-- "No visible difference detected - likely subpixel rendering variation""#);
+- "No visible difference detected - likely subpixel rendering variation""#
+        );
 
         let payload = serde_json::json!({
             "model": self.config.model,

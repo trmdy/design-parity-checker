@@ -35,7 +35,6 @@ pub use pixel::{cluster_diff_regions, PixelDiffThresholds, PixelSimilarity};
 pub use runner::{default_metrics, run_metrics, Metric, MetricKind, MetricResult};
 pub use scoring::{calculate_combined_score, ScoreWeights};
 pub use semantic::{
-    analyze_regions_batch, SemanticAnalyzer, SemanticAnalyzerConfig, SemanticDiff,
-    SemanticDiffType,
+    analyze_regions_batch, SemanticAnalyzer, SemanticAnalyzerConfig, SemanticDiff, SemanticDiffType,
 };
 pub use typography::TypographySimilarity;

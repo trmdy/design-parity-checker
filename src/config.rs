@@ -261,8 +261,9 @@ impl Config {
             return Err("viewport width and height must be greater than zero".to_string());
         }
         if self.pixel_alignment.enabled && self.pixel_alignment.max_shift == 0 {
-            return Err("pixel_alignment.max_shift must be greater than zero when enabled"
-                .to_string());
+            return Err(
+                "pixel_alignment.max_shift must be greater than zero when enabled".to_string(),
+            );
         }
         if self.pixel_alignment.enabled && self.pixel_alignment.downscale_max_dim == 0 {
             return Err(

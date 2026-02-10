@@ -225,8 +225,7 @@ fn typography_penalty(
         }
     }
 
-    if let (Some(ref_ls), Some(impl_ls)) =
-        (reference.letter_spacing, implementation.letter_spacing)
+    if let (Some(ref_ls), Some(impl_ls)) = (reference.letter_spacing, implementation.letter_spacing)
     {
         let base = reference.size.unwrap_or(0.0).max(1.0);
         let diff = ((impl_ls - ref_ls) / base).abs();

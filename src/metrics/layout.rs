@@ -282,11 +282,10 @@ fn layout_deviations(reference: BoundingBox, implementation: BoundingBox) -> (bo
 
     let pos_threshold_x = reference.width.max(1.0) * 0.1;
     let pos_threshold_y = reference.height.max(1.0) * 0.1;
-    let pos_shift = (impl_cx - ref_cx).abs() > pos_threshold_x
-        || (impl_cy - ref_cy).abs() > pos_threshold_y;
+    let pos_shift =
+        (impl_cx - ref_cx).abs() > pos_threshold_x || (impl_cy - ref_cy).abs() > pos_threshold_y;
 
-    let size_diff_w =
-        ((implementation.width - reference.width) / reference.width.max(1.0)).abs();
+    let size_diff_w = ((implementation.width - reference.width) / reference.width.max(1.0)).abs();
     let size_diff_h =
         ((implementation.height - reference.height) / reference.height.max(1.0)).abs();
     let size_change = size_diff_w > 0.1 || size_diff_h > 0.1;

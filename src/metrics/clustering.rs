@@ -204,7 +204,9 @@ pub fn cluster_regions(
             max_x = max_x.max(r.x + r.width);
             max_y = max_y.max(r.y + r.height);
             max_severity = max_severity.max(r.severity);
-            intensity_sum += r.intensity.unwrap_or_else(|| severity_to_intensity(r.severity));
+            intensity_sum += r
+                .intensity
+                .unwrap_or_else(|| severity_to_intensity(r.severity));
         }
 
         clustered.push(ClusteredRegion {
@@ -220,13 +222,13 @@ pub fn cluster_regions(
 
     // Sort by severity (descending) then by area (descending)
     clustered.sort_by(|a, b| {
-        b.severity
-            .cmp(&a.severity)
-            .then_with(|| {
-                let area_a = a.width * a.height;
-                let area_b = b.width * b.height;
-                area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
-            })
+        b.severity.cmp(&a.severity).then_with(|| {
+            let area_a = a.width * a.height;
+            let area_b = b.width * b.height;
+            area_b
+                .partial_cmp(&area_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     });
 
     clustered
@@ -353,7 +355,9 @@ pub fn cluster_regions_image_aware(
             max_x = max_x.max(r.x + r.width);
             max_y = max_y.max(r.y + r.height);
             max_severity = max_severity.max(r.severity);
-            intensity_sum += r.intensity.unwrap_or_else(|| severity_to_intensity(r.severity));
+            intensity_sum += r
+                .intensity
+                .unwrap_or_else(|| severity_to_intensity(r.severity));
         }
 
         clustered.push(ClusteredRegion {
@@ -369,13 +373,13 @@ pub fn cluster_regions_image_aware(
 
     // Sort by severity (descending) then by area (descending)
     clustered.sort_by(|a, b| {
-        b.severity
-            .cmp(&a.severity)
-            .then_with(|| {
-                let area_a = a.width * a.height;
-                let area_b = b.width * b.height;
-                area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
-            })
+        b.severity.cmp(&a.severity).then_with(|| {
+            let area_a = a.width * a.height;
+            let area_b = b.width * b.height;
+            area_b
+                .partial_cmp(&area_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     });
 
     clustered
@@ -616,7 +620,11 @@ mod tests {
             min_cluster_size: 1,
         };
         let standard = cluster_regions(&regions, &standard_config);
-        assert_eq!(standard.len(), 1, "standard clustering merges adjacent regions");
+        assert_eq!(
+            standard.len(),
+            1,
+            "standard clustering merges adjacent regions"
+        );
 
         // Image-aware clustering keeps them separate (different backgrounds)
         let ia_config = ImageAwareClusteringConfig {

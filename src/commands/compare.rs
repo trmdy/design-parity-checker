@@ -248,7 +248,10 @@ pub async fn run_compare(
         if let Some(ref mut pixel_metric) = metrics_scores.pixel {
             if !pixel_metric.diff_regions.is_empty() {
                 if verbose {
-                    eprintln!("Running semantic analysis on {} diff regions...", pixel_metric.diff_regions.len());
+                    eprintln!(
+                        "Running semantic analysis on {} diff regions...",
+                        pixel_metric.diff_regions.len()
+                    );
                 }
 
                 if let Some(analyzer) = SemanticAnalyzer::from_config(&config.semantic) {
@@ -264,7 +267,10 @@ pub async fn run_compare(
                     {
                         Ok(semantic_diffs) => {
                             if verbose {
-                                eprintln!("Semantic analysis found {} diff types", semantic_diffs.len());
+                                eprintln!(
+                                    "Semantic analysis found {} diff types",
+                                    semantic_diffs.len()
+                                );
                                 for diff in &semantic_diffs {
                                     eprintln!("  - {}: {}", diff.diff_type, diff.description);
                                 }
@@ -279,17 +285,39 @@ pub async fn run_compare(
                                     height: d.height,
                                     severity: d.severity,
                                     diff_type: match d.diff_type {
-                                        dpc_lib::SemanticDiffType::TextContent => dpc_lib::types::SemanticDiffType::TextContent,
-                                        dpc_lib::SemanticDiffType::TextReflow => dpc_lib::types::SemanticDiffType::TextReflow,
-                                        dpc_lib::SemanticDiffType::Typography => dpc_lib::types::SemanticDiffType::Typography,
-                                        dpc_lib::SemanticDiffType::Layout => dpc_lib::types::SemanticDiffType::Layout,
-                                        dpc_lib::SemanticDiffType::Color => dpc_lib::types::SemanticDiffType::Color,
-                                        dpc_lib::SemanticDiffType::MissingElement => dpc_lib::types::SemanticDiffType::MissingElement,
-                                        dpc_lib::SemanticDiffType::ExtraElement => dpc_lib::types::SemanticDiffType::ExtraElement,
-                                        dpc_lib::SemanticDiffType::Spacing => dpc_lib::types::SemanticDiffType::Spacing,
-                                        dpc_lib::SemanticDiffType::ImageChange => dpc_lib::types::SemanticDiffType::ImageChange,
-                                        dpc_lib::SemanticDiffType::Decoration => dpc_lib::types::SemanticDiffType::Decoration,
-                                        dpc_lib::SemanticDiffType::Other => dpc_lib::types::SemanticDiffType::Other,
+                                        dpc_lib::SemanticDiffType::TextContent => {
+                                            dpc_lib::types::SemanticDiffType::TextContent
+                                        }
+                                        dpc_lib::SemanticDiffType::TextReflow => {
+                                            dpc_lib::types::SemanticDiffType::TextReflow
+                                        }
+                                        dpc_lib::SemanticDiffType::Typography => {
+                                            dpc_lib::types::SemanticDiffType::Typography
+                                        }
+                                        dpc_lib::SemanticDiffType::Layout => {
+                                            dpc_lib::types::SemanticDiffType::Layout
+                                        }
+                                        dpc_lib::SemanticDiffType::Color => {
+                                            dpc_lib::types::SemanticDiffType::Color
+                                        }
+                                        dpc_lib::SemanticDiffType::MissingElement => {
+                                            dpc_lib::types::SemanticDiffType::MissingElement
+                                        }
+                                        dpc_lib::SemanticDiffType::ExtraElement => {
+                                            dpc_lib::types::SemanticDiffType::ExtraElement
+                                        }
+                                        dpc_lib::SemanticDiffType::Spacing => {
+                                            dpc_lib::types::SemanticDiffType::Spacing
+                                        }
+                                        dpc_lib::SemanticDiffType::ImageChange => {
+                                            dpc_lib::types::SemanticDiffType::ImageChange
+                                        }
+                                        dpc_lib::SemanticDiffType::Decoration => {
+                                            dpc_lib::types::SemanticDiffType::Decoration
+                                        }
+                                        dpc_lib::SemanticDiffType::Other => {
+                                            dpc_lib::types::SemanticDiffType::Other
+                                        }
                                     },
                                     description: d.description,
                                     confidence: d.confidence,

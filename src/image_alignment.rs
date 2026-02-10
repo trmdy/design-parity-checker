@@ -49,13 +49,7 @@ pub fn align_implementation(
     }
 
     let aligned = apply_shift(reference, &impl_img, dx, dy);
-    (
-        aligned,
-        Some(AlignmentOffset {
-            dx,
-            dy,
-        }),
-    )
+    (aligned, Some(AlignmentOffset { dx, dy }))
 }
 
 fn find_best_offset(
@@ -88,13 +82,19 @@ fn find_best_offset(
         max_shift_scaled = 1;
     }
 
-    let (dx_small, dy_small) =
-        best_shift_luma(&ref_small.to_luma8(), &impl_small.to_luma8(), max_shift_scaled);
+    let (dx_small, dy_small) = best_shift_luma(
+        &ref_small.to_luma8(),
+        &impl_small.to_luma8(),
+        max_shift_scaled,
+    );
 
     let dx = ((dx_small as f64) / scale).round() as i32;
     let dy = ((dy_small as f64) / scale).round() as i32;
     let max_shift = options.max_shift as i32;
-    (dx.clamp(-max_shift, max_shift), dy.clamp(-max_shift, max_shift))
+    (
+        dx.clamp(-max_shift, max_shift),
+        dy.clamp(-max_shift, max_shift),
+    )
 }
 
 fn best_shift_luma(ref_luma: &GrayImage, impl_luma: &GrayImage, max_shift: i32) -> (i32, i32) {
