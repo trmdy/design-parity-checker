@@ -62,6 +62,8 @@ pub use figma_client::{
 pub use image_loader::{image_to_normalized_view, load_image, ImageLoadOptions};
 // Metrics module re-exports
 pub use metrics::{
+    // Semantic analysis
+    analyze_regions_batch,
     // Core traits and types
     calculate_combined_score,
     // Concrete metric implementations (for custom configuration)
@@ -69,21 +71,15 @@ pub use metrics::{
     // Region clustering
     cluster_regions,
     cluster_regions_image_aware,
-    ClusteredRegion,
-    ClusteringConfig,
-    ImageAwareClusteringConfig,
     default_metrics,
     generate_top_issues,
     run_metrics,
-    // Semantic analysis
-    analyze_regions_batch,
-    SemanticAnalyzer,
-    SemanticAnalyzerConfig,
-    SemanticDiff,
-    SemanticDiffType,
+    ClusteredRegion,
+    ClusteringConfig,
     // Metric implementations
     ColorPaletteMetric,
     ContentSimilarity,
+    ImageAwareClusteringConfig,
     LayoutSimilarity,
     Metric,
     MetricKind,
@@ -91,6 +87,10 @@ pub use metrics::{
     PixelDiffThresholds,
     PixelSimilarity,
     ScoreWeights,
+    SemanticAnalyzer,
+    SemanticAnalyzerConfig,
+    SemanticDiff,
+    SemanticDiffType,
     TypographySimilarity,
 };
 pub use output::{
